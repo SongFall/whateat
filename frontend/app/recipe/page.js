@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { fetchFeaturedRecipes } from "../services/api";
-import RecipeCard from "../components/recipe/RecipeCard";
+import RecipeCard from "../../components/recipe/RecipeCard";
 
 const RecipePage = () => {
   const [recipes, setRecipes] = useState([]);

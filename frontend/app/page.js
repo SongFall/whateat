@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { fetchFeaturedRecipes, fetchPopularArticles } from "./services/api";
-import Banner from "./components/home/banner/banner";
-import Stats from "./components/home/stats/Stats";
-import Feature from "./components/home/feature/feature";
-import Comment from "./components/home/comment/comment";
+import Banner from "@/components/home/banner/banner";
+import Stats from "@/components/home/stats/Stats";
+import Feature from "@/components/home/feature/feature";
+import Comment from "@/components/home/comment/comment";
 
 function Home() {
   const [featuredRecipes, setFeaturedRecipes] = useState([]);

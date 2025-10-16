@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { fetchPopularArticles } from "../services/api";
-import ArticleCard from "../components/article/ArticleCard";
-import PopArticle from "../components/article/poplist/PopList"
+import ArticleCard from "../../components/article/ArticleCard";
+import PopArticle from "../../components/article/poplist/PopList"
 
 const ArticlePage = () => {
   const [articles, setArticles] = useState([]);
