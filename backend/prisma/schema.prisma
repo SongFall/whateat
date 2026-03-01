@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  username    String       @unique @db.VarChar(50)
+  email       String       @unique @db.VarChar(100)
+  password    String       @db.VarChar(255)
+  avatar      String?      @db.VarChar(255)
+  nickname    String?      @db.VarChar(50)
+  bio         String?      @db.Text
+  role        String       @default("user") @db.VarChar(20)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  articles    Article[]
+  collections Collection[]
+  comments    Comment[]
+  followings  Follow[]     @relation("Following")
+  followers   Follow[]     @relation("Follower")
+  likes       Like[]
+  recipes     Recipe[]
+}
+
+model Recipe {
+  id          Int          @id @default(autoincrement())
+  title       String       @db.VarChar(100)
+  description String       @db.Text
+  ingredients String       @db.Text
+  steps       String       @db.Text
+  coverImage  String?      @db.VarChar(255)
+  cookTime    Int?
+  difficulty  String?      @db.VarChar(20)
+  servings    Int?
+  calories    Int?
+  userId      Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  collections Collection[]
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "Recipe_userId_fkey")
+}
+
+model Article {
+  id          Int          @id @default(autoincrement())
+  title       String       @db.VarChar(150)
+  content     String       @db.Text
+  excerpt     String?      @db.Text
+  readingTime Int          @default(1)
+  coverImage  String?      @db.VarChar(255)
+  category    String?      @db.VarChar(50)
+  tags        String?      @db.VarChar(255)
+  viewCount   Int          @default(0)
+  userId      Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id])
+  collections Collection[]
+  comments    Comment[]
+  likes       Like[]
+
+  @@index([userId], map: "Article_userId_fkey")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String   @db.Text
+  userId    Int
+  articleId Int
+  parentId  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  article   Article  @relation(fields: [articleId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([articleId], map: "Comment_articleId_fkey")
+  @@index([userId], map: "Comment_userId_fkey")
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  articleId Int
+  createdAt DateTime @default(now())
+  article   Article  @relation(fields: [articleId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, articleId])
+  @@index([articleId], map: "Like_articleId_fkey")
+}
+
+model Collection {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  recipeId  Int?
+  articleId Int?
+  createdAt DateTime @default(now())
+  article   Article? @relation(fields: [articleId], references: [id])
+  recipe    Recipe?  @relation(fields: [recipeId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, recipeId], name: "unique_user_recipe_collection")
+  @@unique([userId, articleId], name: "unique_user_article_collection")
+  @@index([articleId], map: "Collection_articleId_fkey")
+  @@index([recipeId], map: "Collection_recipeId_fkey")
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Following", fields: [followerId], references: [id])
+  following   User     @relation("Follower", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@index([followingId], map: "Follow_following_id_fkey")
+}

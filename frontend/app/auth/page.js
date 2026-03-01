@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { login, register } from "../services/users/usersApi";
 
 const AuthPage = () => {
   const router = useRouter();
@@ -9,7 +10,7 @@ const AuthPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -40,8 +41,8 @@ const AuthPage = () => {
       }
 
       // 用户名验证
-      if (!name.trim()) {
-        newErrors.name = "请输入用户名";
+      if (!username.trim()) {
+        newErrors.username = "请输入用户名";
       }
     }
 
@@ -60,21 +61,41 @@ const AuthPage = () => {
     setIsSubmitting(true);
 
     try {
-      // 模拟API请求延迟
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // 这里是模拟的登录/注册逻辑
-      console.log(`${isLogin ? "登录" : "注册"}请求:`, {
-        name: isLogin ? undefined : name,
-        email,
-        password,
-      });
+      let response;
+      
+      if (isLogin) {
+        // 登录逻辑
+        response = await login({ email, password });
+      } else {
+        // 注册逻辑
+        response = await register({ username, email, password });
+      }
 
       // 登录/注册成功后重定向到首页
       router.push("/");
     } catch (error) {
       console.error(`${isLogin ? "登录" : "注册"}失败:`, error);
-      setErrors({ submit: `${isLogin ? "登录" : "注册"}失败，请稍后重试` });
+      
+      // 处理不同类型的错误
+      let errorMessage;
+      if (error.response) {
+        // 服务器返回了错误响应
+        if (error.response.status === 401) {
+          errorMessage = "邮箱或密码错误";
+        } else if (error.response.status === 409) {
+          errorMessage = "该邮箱已被注册";
+        } else {
+          errorMessage = error.response.data.message || `${isLogin ? "登录" : "注册"}失败，请稍后重试`;
+        }
+      } else if (error.request) {
+        // 请求已发送但没有收到响应
+        errorMessage = "网络错误，请检查网络连接";
+      } else {
+        // 其他错误
+        errorMessage = `${isLogin ? "登录" : "注册"}失败，请稍后重试`;
+      }
+      
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -112,25 +133,25 @@ const AuthPage = () => {
           {!isLogin && (
             <div>
               <label
-                htmlFor="name"
+                htmlFor="username"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
                 用户名
               </label>
               <input
                 type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:outline-none transition-colors ${
-                  errors.name
+                  errors.username
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500/30 dark:border-red-700"
                     : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 }`}
                 placeholder="请输入您的用户名"
               />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
+              {errors.username && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.username}</p>
               )}
             </div>
           )}

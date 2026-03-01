@@ -61,7 +61,7 @@ const FoodBlogSection = () => {
         {foodPosts.map((post) => (
           <Link 
             key={post.id}
-            href={`/blog/${post.slug}`}
+            href={`/article/${post.id}`}
             className="group flex flex-col h-full focus:outline-none focus:ring-2 focus:ring-orange-500 rounded-xl overflow-hidden"
             aria-label={`阅读文章: ${post.title}`}
           >

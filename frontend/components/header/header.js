@@ -7,7 +7,37 @@ const Header = () => {
   // 状态管理
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
   const pathname = usePathname(); // 获取当前路径
+
+  // 检查用户登录状态
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('userInfo');
+      
+      if (token && user) {
+        setIsLoggedIn(true);
+        setUserInfo(JSON.parse(user));
+      } else {
+        setIsLoggedIn(false);
+        setUserInfo(null);
+      }
+    };
+    
+    // 初始检查
+    checkLoginStatus();
+    
+    // 监听存储变化（用于其他页面登录/登出时更新状态）
+    window.addEventListener('storage', checkLoginStatus);
+    
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus);
+    };
+  }, []);
 
   // 修复核心：确保isActive函数正确定义
   const isActive = (href) => {
@@ -69,35 +99,90 @@ const Header = () => {
           </div>
 
           {/* 功能按钮组 */}
-          <div className="flex items-center gap-2">
-            {/* 搜索按钮 */}
+          <div className="flex items-center gap-2 relative">
+            {/* 搜索框 - 绝对定位，不影响菜单栏 */}
+            <div className={`absolute right-full top-1/2 -translate-y-1/2 mr-3 transition-all duration-300 ease-in-out transform ${isSearchOpen ? 'translate-x-0 opacity-100 w-64' : 'translate-x-10 opacity-0 w-0 overflow-hidden'}`}>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  // 这里可以添加搜索逻辑，比如跳转到搜索结果页
+                  window.location.href = `/search?query=${encodeURIComponent(searchQuery.trim())}`;
+                }
+              }}>
+                <input
+                  type="text"
+                  placeholder="搜索食谱、文章..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setIsSearchOpen(false);
+                      setSearchQuery('');
+                    }
+                  }}
+                  className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 text-sm"
+                  autoFocus
+                />
+              </form>
+            </div>
+            
+            {/* 搜索/取消按钮 */}
             <button
               type="button"
               className="p-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
-              aria-label="Search"
+              aria-label={isSearchOpen ? "Cancel search" : "Search"}
+              onClick={() => {
+                if (isSearchOpen) {
+                  setIsSearchOpen(false);
+                  setSearchQuery('');
+                } else {
+                  setIsSearchOpen(true);
+                }
+              }}
             >
-              <svg
-                className="w-5 h-5 text-gray-700"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m21 21-4.34-4.34" />
-                <circle cx="11" cy="11" r="8" />
-              </svg>
+              {isSearchOpen ? (
+                <svg
+                  className="w-5 h-5 text-gray-700"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5 text-gray-700"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m21 21-4.34-4.34" />
+                  <circle cx="11" cy="11" r="8" />
+                </svg>
+              )}
             </button>
 
-            {/* 购物车按钮 */}
+            {/* 管理员按钮 */}
             <button
               type="button"
               className="p-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 relative"
-              aria-label="Cart"
+              aria-label="Admin"
+              onClick={() => {
+                window.location.href = '/admin';
+              }}
             >
               <svg
                 className="w-5 h-5 text-gray-700"
@@ -111,22 +196,80 @@ const Header = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <circle cx="8" cy="21" r="1" />
-                <circle cx="19" cy="21" r="1" />
-                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
               <span className="absolute top-0 right-0 w-4 h-4 bg-orange-500 text-white text-xs flex items-center justify-center rounded-full">
                 3
               </span>
             </button>
 
-            {/* 登录按钮 */}
-            <Link
-              href="/auth"
-              className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-orange-400 rounded-lg hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 transition-all"
-            >
-              登录
-            </Link>
+            {/* 登录/用户头像 */}
+            {isLoggedIn ? (
+              <div className="relative group">
+                <button
+                  type="button"
+                  className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden border-2 border-orange-300 hover:border-orange-500 transition-all focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
+                  aria-label="User menu"
+                >
+                  <img
+                    src={userInfo?.avatar || '/default-avatar.png'}
+                    alt={userInfo?.username || 'User'}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+                {/* 用户菜单下拉 */}
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 origin-top-right">
+                  <Link
+                    href="/my"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                  >
+                    我的主页
+                  </Link>
+                  <Link
+                    href="/my/recipes"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                  >
+                    我的食谱
+                  </Link>
+                  <Link
+                    href="/my/articles"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                  >
+                    我的文章
+                  </Link>
+                  <Link
+                    href="/my/collections"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                  >
+                    我的收藏
+                  </Link>
+                  <div className="border-t border-gray-200 my-1"></div>
+                  <button
+                    type="button"
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    onClick={() => {
+                      // 登出逻辑
+                      localStorage.removeItem('token');
+                      localStorage.removeItem('userInfo');
+                      setIsLoggedIn(false);
+                      setUserInfo(null);
+                      // 触发存储事件，通知其他页面
+                      window.dispatchEvent(new Event('storage'));
+                    }}
+                  >
+                    退出登录
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                className="hidden sm:inline-flex items-center text-white px-4 py-2 text-sm font-mediums bg-orange-400 rounded-lg hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 transition-all"
+              >
+                登录
+              </Link>
+            )}
 
             {/* 移动端菜单按钮 */}
             <button
@@ -194,13 +337,26 @@ const Header = () => {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/signin"
-              className="px-3 py-2 rounded-lg font-medium bg-orange-400 text-black hover:bg-orange-500 text-center"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Sign in
-            </Link>
+            {isLoggedIn ? (
+              <div className="px-3 py-2 rounded-lg font-medium bg-orange-50 text-orange-700">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={userInfo?.avatar || '/default-avatar.png'}
+                    alt={userInfo?.username || 'User'}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <span>{userInfo?.username || 'User'}</span>
+                </div>
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                className="px-3 py-2 rounded-lg font-medium bg-orange-400 text-white hover:bg-orange-500 text-center"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                登录
+              </Link>
+            )}
           </div>
         </div>
       </nav>

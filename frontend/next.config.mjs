@@ -16,7 +16,9 @@ const nextConfig = {
   },
     images: {
     domains: [
+      'whateat01.oss-cn-beijing.aliyuncs.com',
       'picsum.photos', // 允许加载 picsum 图片
+      'example.com', // 允许加载 example.com 图片
       'localhost', // 本地开发用（可选）
       // 若后续添加其他图片域名，可在此处继续添加
     ],

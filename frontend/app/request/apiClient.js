@@ -5,7 +5,7 @@
 
 class ApiClient {
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+    this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
     this.requestInterceptors = [];
     this.responseInterceptors = [];
   }
@@ -225,6 +225,47 @@ class ApiClient {
     // 删除Content-Type，让浏览器自动设置
     delete uploadOptions.headers['Content-Type'];
 
+    // 处理上传进度
+    if (options.onUploadProgress && typeof options.onUploadProgress === 'function') {
+      // 创建上传进度监控
+      const xhr = new XMLHttpRequest();
+      return new Promise((resolve, reject) => {
+        xhr.open('POST', this.buildUrl(url));
+        
+        // 设置请求头
+        Object.keys(uploadOptions.headers).forEach(key => {
+          xhr.setRequestHeader(key, uploadOptions.headers[key]);
+        });
+        
+        // 监控上传进度
+        xhr.upload.addEventListener('progress', (event) => {
+          options.onUploadProgress(event);
+        });
+        
+        // 处理响应
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch (error) {
+              resolve(xhr.responseText);
+            }
+          } else {
+            reject(new Error(`HTTP error! status: ${xhr.status}`));
+          }
+        });
+        
+        // 处理错误
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error'));
+        });
+        
+        // 发送请求
+        xhr.send(formData);
+      });
+    }
+
     return this.request(url, uploadOptions);
   }
 }
@@ -251,15 +292,81 @@ apiClient.addRequestInterceptor(async (config) => {
 
 // 添加默认响应拦截器 - 统一错误处理等
 apiClient.addResponseInterceptor(async (response) => {
-  // 可以在这里添加响应拦截逻辑，如统一错误处理、刷新token等
+  // 解析响应数据
+  let responseData;
+  try {
+    responseData = await response.clone().json();
+  } catch (error) {
+    responseData = null;
+  }
+  
+  // 处理401未授权错误
   if (response.status === 401) {
-    // 处理未授权错误，如跳转到登录页
-    console.warn('Authorization failed, please login again');
-    // 可以在这里添加重定向到登录页的逻辑
+    // 清除本地token和用户信息
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userInfo');
+    
+    // 跳转到登录页
+    console.warn('Authorization failed, redirecting to login page');
+    window.location.href = '/auth';
+    return response;
+  }
+  
+  // 处理其他错误状态码
+  if (!response.ok) {
+    // 构建错误信息
+    const errorMessage = responseData?.message || `请求失败: ${response.status} ${response.statusText}`;
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.data = responseData;
+    
+    // 抛出错误，让调用方处理
+    throw error;
   }
   
   return response;
 });
+
+// 添加统一错误处理函数
+export const handleApiError = (error) => {
+  // 可以在这里添加统一的错误处理逻辑，如显示错误提示、上报错误等
+  console.error('API Error:', error.message);
+  
+  // 示例：显示错误提示
+  if (typeof window !== 'undefined' && window.alert) {
+    window.alert(error.message);
+  }
+  
+  return error;
+};
+
+// 添加请求取消功能
+apiClient.cancelTokens = new Map();
+
+// 生成取消令牌
+apiClient.getCancelToken = (key) => {
+  const controller = new AbortController();
+  apiClient.cancelTokens.set(key, controller);
+  return controller.signal;
+};
+
+// 取消请求
+apiClient.cancelRequest = (key) => {
+  const controller = apiClient.cancelTokens.get(key);
+  if (controller) {
+    controller.abort();
+    apiClient.cancelTokens.delete(key);
+  }
+};
+
+// 取消所有请求
+apiClient.cancelAllRequests = () => {
+  for (const controller of apiClient.cancelTokens.values()) {
+    controller.abort();
+  }
+  apiClient.cancelTokens.clear();
+};
 
 export default apiClient;
 export { ApiClient };

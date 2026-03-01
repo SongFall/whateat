@@ -4,33 +4,25 @@ import apiClient from "@/app/request/apiClient";
 export const getUploadToken = async (fileName, expireSeconds) => {
   try {
     const params = {};
-    if (fileName) params.fileName = fileName;
-    if (expireSeconds) params.expireSeconds = expireSeconds;
+    if (fileName) params.key = fileName;
+    if (expireSeconds) params.expires = expireSeconds;
 
     const response = await apiClient.get("/upload/token", params);
     return response;
   } catch (error) {
     console.error("获取上传凭证失败:", error);
-    throw new Error(error.data?.message || "获取上传凭证失败");
+    throw new Error(error.message || "获取上传凭证失败");
   }
 };
 
-// 使用XMLHttpRequest实现带进度监听的上传
-export const uploadToQiniu = async (file, onProgress) => {
+// 使用后端接口实现带进度监听的上传
+export const uploadToAliyun = async (file, onProgress) => {
   try {
-    // 1. 获取上传凭证
-    const tokenResponse = await getUploadToken(file.name);
-    const { token, domain } = tokenResponse.data;
-    // 使用华南区域(z2)的上传地址，根据错误提示，存储桶whateat-oss位于华南区域
-    const uploadUrl = process.env.NEXT_PUBLIC_QINIU_UPLOAD_URL || `https://up-z2.qiniup.com`;
-
-    // 2. 准备FormData
+    // 1. 准备FormData
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("token", token);
-    formData.append("key", `uploads/${Date.now()}-${file.name}`); // 自定义文件路径
 
-    // 3. 使用XMLHttpRequest实现带进度监听的上传
+    // 2. 使用XMLHttpRequest实现带进度监听的上传到后端
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
@@ -46,18 +38,19 @@ export const uploadToQiniu = async (file, onProgress) => {
       xhr.addEventListener("load", () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
-            const responseData = JSON.parse(xhr.responseText);
-            resolve({
-              key: responseData.key,
-              url: `http://${domain}/${responseData.key}`, // 使用从token接口获取的domain
-            });
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+              resolve(response.data);
+            } else {
+              reject(new Error(response.message || "上传失败"));
+            }
           } catch (parseError) {
             reject(new Error("解析上传响应失败"));
           }
         } else {
           try {
             const errorData = JSON.parse(xhr.responseText);
-            reject(new Error(errorData.error || `上传失败: ${xhr.status}`));
+            reject(new Error(errorData.message || `上传失败: ${xhr.status}`));
           } catch (e) {
             reject(new Error(`上传失败: ${xhr.status}`));
           }
@@ -74,8 +67,8 @@ export const uploadToQiniu = async (file, onProgress) => {
         reject(new Error("上传超时"));
       });
 
-      // 发送请求
-      xhr.open("POST", uploadUrl);
+      // 发送请求到后端上传接口
+      xhr.open("POST", "http://localhost:3001/upload/file");
       xhr.send(formData);
     });
   } catch (error) {
@@ -87,5 +80,5 @@ export const uploadToQiniu = async (file, onProgress) => {
 // 导出上传服务对象
 export const uploadService = {
   getUploadToken,
-  uploadToQiniu,
+  uploadToAliyun,
 };

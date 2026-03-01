@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { UploadController } from './upload.controller';
-import { QiniuService } from './qiniu.service';
+import { AliyunOssService } from './aliyun-oss.service';
 
 @Module({
   imports: [ConfigModule],
   controllers: [UploadController],
-  providers: [QiniuService],
-  exports: [QiniuService],
+  providers: [AliyunOssService],
+  exports: [AliyunOssService],
 })
 export class UploadModule {}
