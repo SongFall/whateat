@@ -10,9 +10,9 @@ const FORCE_MOCK_DATA = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === 'true';
 export async function getUserProfile() {
   try {
     // 在开发环境中或强制使用mock数据时，直接返回mock数据
-    if (IS_DEVELOPMENT || FORCE_MOCK_DATA) {
-      return getMockUserProfile();
-    }
+    // if (IS_DEVELOPMENT || FORCE_MOCK_DATA) {
+    //   return getMockUserProfile();
+    // }
     
     // 获取当前用户ID
     const userId = localStorage.getItem('userId');
@@ -55,6 +55,9 @@ export const register = async (userData) => {
   }
 };
 
+// 导出 createUser 作为 register 的别名，以兼容 admin 页面的导入
+export const createUser = register;
+
 /**
  * 获取所有用户
  * @returns {Promise<Array>} 用户列表
@@ -96,6 +99,25 @@ export const updateUser = async (userId, userData) => {
     return response;
   } catch (error) {
     console.error(`更新用户 ${userId} 信息失败:`, error);
+    throw error;
+  }
+};
+
+/**
+ * 上传用户头像
+ * @param {number} userId - 用户ID
+ * @param {File} file - 头像文件
+ * @returns {Promise<Object>} 上传结果，包含头像URL
+ */
+export const uploadUserAvatar = async (userId, file) => {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    const response = await apiClient.upload(`/users/${userId}/avatar`, formData);
+    return response;
+  } catch (error) {
+    console.error(`上传用户 ${userId} 头像失败:`, error);
     throw error;
   }
 };
@@ -396,12 +418,135 @@ export const isArticleCollected = async (userId, articleId) => {
 };
 
 /**
+ * 获取用户文章列表
+ * @param {number} userId - 用户ID
+ * @param {Object} [params] - 查询参数
+ * @returns {Promise<Array>} 用户文章列表
+ */
+export const getUserArticles = async (userId, params = {}) => {
+  try {
+    // if (IS_DEVELOPMENT || FORCE_MOCK_DATA) {
+    //   return getMockUserArticles();
+    // }
+    const response = await apiClient.get(`/articles/user/${userId}`, params);
+    return response;
+  } catch (error) {
+    console.error(`获取用户 ${userId} 的文章列表失败:`, error);
+    // return getMockUserArticles();
+  }
+};
+
+/**
+ * 获取用户食谱列表
+ * @param {number} userId - 用户ID
+ * @param {Object} [params] - 查询参数
+ * @returns {Promise<Array>} 用户食谱列表
+ */
+export const getUserRecipes = async (userId, params = {}) => {
+  try {
+    // if (IS_DEVELOPMENT || FORCE_MOCK_DATA) {
+    //   return getMockUserRecipes();
+    // }
+    const response = await apiClient.get(`/recipes/user/${userId}`, params);
+    return response;
+  } catch (error) {
+    console.error(`获取用户 ${userId} 的食谱列表失败:`, error);
+    // return getMockUserRecipes();
+  }
+};
+
+/**
+ * 获取用户文章的mock数据
+ */
+function getMockUserArticles() {
+  return [
+    {
+      id: 1,
+      title: '10道简单又美味的家常菜做法，让你爱上厨房',
+      content: '在家也能做出餐厅级别的美味佳肴，这些家常菜做法简单易学，食材常见，让你的餐桌更加丰富多彩。',
+      coverImage: 'https://picsum.photos/seed/article1/400/200',
+      viewCount: 234,
+      commentCount: 12,
+      shareCount: 56,
+      createdAt: '2024-05-15T08:00:00Z'
+    },
+    {
+      id: 2,
+      title: '夏日清爽沙拉的10种创意做法',
+      content: '炎炎夏日，来一份清爽的沙拉再好不过了。这里有10种创意沙拉做法，让你的味蕾焕然一新。',
+      coverImage: 'https://picsum.photos/seed/article2/400/200',
+      viewCount: 189,
+      commentCount: 8,
+      shareCount: 34,
+      createdAt: '2024-05-10T10:00:00Z'
+    },
+    {
+      id: 3,
+      title: '如何挑选新鲜食材，让你的料理更美味',
+      content: '食材的新鲜度直接影响料理的口感和营养，学会挑选新鲜食材是每个烹饪爱好者的必备技能。',
+      coverImage: 'https://picsum.photos/seed/article3/400/200',
+      viewCount: 156,
+      commentCount: 15,
+      shareCount: 42,
+      createdAt: '2024-05-05T14:00:00Z'
+    }
+  ];
+}
+
+/**
+ * 获取用户食谱的mock数据
+ */
+function getMockUserRecipes() {
+  return [
+    {
+      id: 1,
+      title: '家常红烧肉的完美做法',
+      description: '肥而不腻，入口即化的红烧肉，传统做法的完美呈现，让你在家也能做出饭店级别的美味。',
+      coverImage: 'https://picsum.photos/seed/recipe1/400/200',
+      cookTime: 30,
+      difficulty: '中等难度',
+      rating: 4.8,
+      createdAt: '2024-05-20T09:00:00Z'
+    },
+    {
+      id: 2,
+      title: '清爽开胃的凉拌黄瓜',
+      description: '夏日必备的凉拌黄瓜，做法简单，口感清爽，是夏季餐桌上的一道亮丽风景线。',
+      coverImage: 'https://picsum.photos/seed/recipe2/400/200',
+      cookTime: 10,
+      difficulty: '简单',
+      rating: 4.5,
+      createdAt: '2024-05-18T11:00:00Z'
+    },
+    {
+      id: 3,
+      title: '营养丰富的番茄鸡蛋面',
+      description: '经典的番茄鸡蛋面，营养丰富，口感鲜美，是家庭餐桌上的常客。',
+      coverImage: 'https://picsum.photos/seed/recipe3/400/200',
+      cookTime: 15,
+      difficulty: '简单',
+      rating: 4.6,
+      createdAt: '2024-05-15T12:00:00Z'
+    }
+  ];
+}
+
+/**
  * 获取用户资料的mock数据
  */
 function getMockUserProfile() {
   return {
-    name: '访客用户',
+    id: 1,
+    username: '小厨',
+    email: 'user@example.com',
     avatar: '/default-avatar.png',
-    preferences: [],
+    bio: '热爱美食，喜欢分享烹饪经验',
+    location: '北京',
+    preferences: {
+      favoriteCuisines: ['川菜', '粤菜'],
+      dietaryRestrictions: [],
+      mealTypes: ['早餐', '午餐', '晚餐']
+    },
+    createdAt: new Date().toISOString()
   };
 }

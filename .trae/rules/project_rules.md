@@ -4,13 +4,13 @@
 项目的后端代码位于whateat-backend目录下
 
 选用的技术栈如下：
-1. 前端使用nextjss
+1. 前端使用next js
 2. 后端使用nestjs
 3. 数据库使用mysql
 4. 数据库管理工具使用prisma
-5. 对象存储使用七牛云
+5. 对象存储使用aliyun oss
 6. UI组件库使用shadcn
 7. 网络请求库使用axios
-8. AI模型使用智谱清言的GLM-4模型
+8. AI模型使用通义千问的Qwen-3.5-flash以及Qwen-image-plus模型
 
 项目使用yarn作为项目的包管理器

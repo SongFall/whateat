@@ -71,7 +71,7 @@ export class UploadController {
           domain = `http://${bucket}.${region}.aliyuncs.com`;
         }
       }
-      
+
       return {
         success: true,
         data: {

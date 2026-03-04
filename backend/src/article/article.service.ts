@@ -16,53 +16,60 @@ export class ArticleService {
   async findAll(query: any) {
     const { page = 1, limit = 10, search, category, tag } = query;
     const skip = (Number(page) - 1) * Number(limit);
-    
-    const articles = await this.prisma.article.findMany({
-      where: {
-        ...(search && {
-          OR: [
-            { title: { contains: search } },
-            { content: { contains: search } },
-            { tags: { contains: search } },
-            { category: { contains: search } },
-            { readingTime: { contains: search } },
-          ],
-        }),
-        ...(category && { category }),
-        ...(tag && { tags: { contains: tag } }),
-      },
-      skip,
-      take: Number(limit),
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            avatar: true,
-            nickname: true,
-          },
-        },
-        comments: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                avatar: true,
-                nickname: true,
-              },
+
+    // 构建查询条件
+    const where = {
+      ...(search && {
+        OR: [
+          { title: { contains: search } },
+          { content: { contains: search } },
+          { tags: { contains: search } },
+          { category: { contains: search } },
+          { readingTime: { contains: search } },
+        ],
+      }),
+      ...(category && { category }),
+      ...(tag && { tags: { contains: tag } }),
+    };
+
+    // 并行执行查询
+    const [articles, count] = await Promise.all([
+      this.prisma.article.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
             },
           },
-          orderBy: { createdAt: 'desc' },
+          comments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  avatar: true,
+                  nickname: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+          likes: true,
+          collections: true,
         },
-        likes: true,
-        collections: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.article.count({ where }),
+    ]);
 
     // 处理文章数据，添加author字段和阅读时间
-    return articles.map(article => ({
+    const processedArticles = articles.map((article) => ({
       ...article,
       author: article.user?.nickname || article.user?.username || '未知作者',
       authorAvatar: article.user?.avatar,
@@ -70,6 +77,14 @@ export class ArticleService {
       publishDate: article.createdAt.toISOString().split('T')[0],
       readingTime: article.readingTime,
     }));
+
+    // 返回包含文章列表和总数的对象
+    return {
+      data: processedArticles,
+      count,
+      page: Number(page),
+      limit: Number(limit),
+    };
   }
 
   async findOne(id: number) {
@@ -84,7 +99,7 @@ export class ArticleService {
         },
       },
     });
-    
+
     // 然后返回文章详情
     const article = await this.prisma.article.findUnique({
       where: {
@@ -148,7 +163,7 @@ export class ArticleService {
     });
 
     // 处理文章数据，添加author字段和阅读时间
-    return articles.map(article => ({
+    return articles.map((article) => ({
       ...article,
       author: article.user?.nickname || article.user?.username || '未知作者',
       authorAvatar: article.user?.avatar,
@@ -191,7 +206,12 @@ export class ArticleService {
     });
   }
 
-  comment(articleId: number, userId: number, content: string, parentId?: number) {
+  comment(
+    articleId: number,
+    userId: number,
+    content: string,
+    parentId?: number,
+  ) {
     return this.prisma.comment.create({
       data: {
         articleId,
@@ -220,5 +240,64 @@ export class ArticleService {
         },
       },
     });
+  }
+
+  async findByUserId(userId: number, query: any = {}) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // 并行执行查询
+    const [articles, count] = await Promise.all([
+      this.prisma.article.findMany({
+        where: { userId },
+        skip,
+        take: Number(limit),
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
+            },
+          },
+          comments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  avatar: true,
+                  nickname: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+          likes: true,
+          collections: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.article.count({ where: { userId } }),
+    ]);
+
+    // 处理文章数据，添加author字段和阅读时间
+    const processedArticles = articles.map((article) => ({
+      ...article,
+      author: article.user?.nickname || article.user?.username || '未知作者',
+      authorAvatar: article.user?.avatar,
+      createdAt: article.createdAt.toISOString().split('T')[0],
+      publishDate: article.createdAt.toISOString().split('T')[0],
+      readingTime: article.readingTime,
+    }));
+
+    // 返回包含文章列表和总数的对象
+    return {
+      data: processedArticles,
+      count,
+      page: Number(page),
+      limit: Number(limit),
+    };
   }
 }

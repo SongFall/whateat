@@ -25,7 +25,7 @@ async function bootstrap() {
     .addTag('follows', '关注管理')
     .addTag('upload', '文件上传')
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 

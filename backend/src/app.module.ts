@@ -10,9 +10,21 @@ import { ArticleModule } from './article/article.module';
 import { CollectionModule } from './collection/collection.module';
 import { FollowModule } from './follow/follow.module';
 import { AiModule } from './ai/ai.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), UploadModule, PrismaModule, UserModule, RecipeModule, ArticleModule, CollectionModule, FollowModule, AiModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    CommonModule,
+    UploadModule,
+    PrismaModule,
+    UserModule,
+    RecipeModule,
+    ArticleModule,
+    CollectionModule,
+    FollowModule,
+    AiModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

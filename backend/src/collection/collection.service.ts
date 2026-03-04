@@ -8,7 +8,7 @@ export class CollectionService {
   findAll(query: any) {
     const { page = 1, limit = 10 } = query;
     const skip = (Number(page) - 1) * Number(limit);
-    
+
     return this.prisma.collection.findMany({
       skip,
       take: Number(limit),

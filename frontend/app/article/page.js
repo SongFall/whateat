@@ -24,9 +24,12 @@ const ArticlePage = () => {
         setError(null);
 
         // 获取热门文章数据
-        const {data: articlesData, count} = await getAllArticles();
-        console.log(articlesData.length);
-        setCount(count);
+        const response = await getAllArticles();
+        const articlesData = response.data || [];
+        const totalCount = response.count || 0;
+        console.log('文章数据:', articlesData);
+        console.log('文章总数:', totalCount);
+        setCount(totalCount);
         setArticles(articlesData);
       } catch (err) {
         console.error("加载文章失败:", err);

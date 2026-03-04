@@ -11,4 +11,28 @@ export class CreateAiRecipeDto {
 
   @IsString()
   taste: string;
+
+  @IsString()
+  @IsOptional()
+  cuisine: string;
+
+  @IsString()
+  @IsOptional()
+  cookingMethod: string;
+
+  @IsString()
+  @IsOptional()
+  difficulty: string;
+
+  @IsString()
+  @IsOptional()
+  servings: string;
+
+  @IsString()
+  @IsOptional()
+  cookingTime: string;
+
+  @IsString()
+  @IsOptional()
+  dietaryRestrictions: string;
 }

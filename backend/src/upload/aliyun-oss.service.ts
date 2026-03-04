@@ -43,7 +43,9 @@ export class AliyunOssService {
    */
   private getAliyunOssConfig(): AliyunOssConfig {
     const accessKeyId = this.configService.get<string>('ALIYUN_ACCESS_KEY_ID');
-    const accessKeySecret = this.configService.get<string>('ALIYUN_ACCESS_KEY_SECRET');
+    const accessKeySecret = this.configService.get<string>(
+      'ALIYUN_ACCESS_KEY_SECRET',
+    );
     const bucket = this.configService.get<string>('ALIYUN_OSS_BUCKET');
     const region = this.configService.get<string>('ALIYUN_OSS_REGION');
     const endpoint = this.configService.get<string>('ALIYUN_OSS_ENDPOINT');
@@ -76,12 +78,9 @@ export class AliyunOssService {
     // 注意：实际使用中可能需要根据前端需求调整实现方式
     const policy = {
       expiration: new Date(Date.now() + expires * 1000).toISOString(),
-      conditions: [
-        { bucket: this.bucket },
-        { key: key || '' },
-      ],
+      conditions: [{ bucket: this.bucket }, { key: key || '' }],
     };
-    
+
     // 这里简化处理，实际项目中可能需要更复杂的签名逻辑
     // 前端可以使用ali-oss SDK直接上传
     return 'aliyun-oss-upload-token';
@@ -95,7 +94,7 @@ export class AliyunOssService {
     if (!key) {
       throw new Error('文件key不能为空');
     }
-    
+
     let baseDomain: string;
     if (this.domain) {
       // 使用配置的域名
@@ -106,7 +105,7 @@ export class AliyunOssService {
       // 使用阿里云 OSS 默认域名
       baseDomain = `http://${this.bucket}.${this.configService.get<string>('ALIYUN_OSS_REGION')}.aliyuncs.com`;
     }
-    
+
     return `${baseDomain}/${encodeURIComponent(key)}`;
   }
 
@@ -129,7 +128,8 @@ export class AliyunOssService {
         return false;
       }
       // 其他错误视为异常
-      const errorMsg = error instanceof Error ? error.message : '检查文件存在性未知错误';
+      const errorMsg =
+        error instanceof Error ? error.message : '检查文件存在性未知错误';
       this.logger.error(`检查文件存在性失败 [${key}]：${errorMsg}`);
       throw new Error(`检查文件失败：${errorMsg}`);
     }
@@ -151,7 +151,8 @@ export class AliyunOssService {
       return true;
     } catch (error) {
       // 3. 统一处理所有错误
-      const errorMsg = error instanceof Error ? error.message : '删除文件未知错误';
+      const errorMsg =
+        error instanceof Error ? error.message : '删除文件未知错误';
       this.logger.error(`删除文件失败 [${key}]：${errorMsg}`);
       throw new Error(`删除文件失败：${errorMsg}`);
     }
@@ -230,14 +231,18 @@ export class AliyunOssService {
       return result.name;
     } catch (error) {
       // 统一处理所有错误
-      const errorMsg = error instanceof Error ? error.message : '上传文件未知错误';
+      const errorMsg =
+        error instanceof Error ? error.message : '上传文件未知错误';
       this.logger.error(`上传文件失败 [${key}]：${errorMsg}`);
       throw new Error(`上传文件失败：${errorMsg}`);
     }
   }
 
   // 生成随机文件名
-  private generateRandomFileName(originalName: string, directory: string = 'recipes'): string {
+  private generateRandomFileName(
+    originalName: string,
+    directory: string = 'recipes',
+  ): string {
     const ext = path.extname(originalName);
     const randomStr = crypto.randomBytes(8).toString('hex');
     const timestamp = Date.now();
@@ -245,22 +250,28 @@ export class AliyunOssService {
   }
 
   // 从URL下载图片并上传到OSS
-  async uploadImageFromUrl(imageUrl: string, directory: string = 'recipes'): Promise<string> {
+  async uploadImageFromUrl(
+    imageUrl: string,
+    directory: string = 'recipes',
+  ): Promise<string> {
     try {
       // 下载图片
-      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+      });
       const buffer = Buffer.from(response.data);
-      
+
       // 生成随机文件名
       const fileName = this.generateRandomFileName('cover.jpg', directory);
-      
+
       // 上传到OSS
       const key = await this.uploadFile(fileName, buffer);
-      
+
       // 返回完整的访问URL
       return this.getPublicUrl(key);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : '上传图片未知错误';
+      const errorMsg =
+        error instanceof Error ? error.message : '上传图片未知错误';
       this.logger.error(`从URL上传图片失败：${errorMsg}`);
       throw new Error(`从URL上传图片失败：${errorMsg}`);
     }

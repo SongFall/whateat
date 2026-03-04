@@ -1,10 +1,20 @@
 "use client";
 
 import ImageUploader from "@/components/uploader/uploader";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import apiClient from "@/app/request/apiClient";
 
 export default function CookingPage() {
+  // 添加lottie脚本
+  useEffect(() => {
+    if (!document.getElementById('lottie-script')) {
+      const script = document.createElement('script');
+      script.id = 'lottie-script';
+      script.src = 'https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.3/dist/dotlottie-wc.js';
+      script.type = 'module';
+      document.head.appendChild(script);
+    }
+  }, []);
   const [formData, setFormData] = useState({
     ingredients: "",
     cuisine: "",
@@ -74,8 +84,8 @@ export default function CookingPage() {
         } else if (response.data && response.data.recipeId) {
           console.log("Redirecting to:", `/recipe/${response.data.recipeId}`);
           window.location.href = `/recipe/${response.data.recipeId}`;
-        } else {
-          console.log("No recipeId found in response");
+      } else {
+        console.log("No recipeId found in response");
         }
       }, 1500);
       
@@ -104,7 +114,7 @@ export default function CookingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 relative">
       {/* 顶部标题区域 */}
       <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-16 sm:py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -293,7 +303,7 @@ export default function CookingPage() {
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    {/* <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> */}
                     <span>生成中...</span>
                   </div>
                 ) : (
@@ -308,6 +318,22 @@ export default function CookingPage() {
         <div className="mt-8 h-4 text-center text-sm text-gray-500">
         </div>
       </div>
+
+      {/* 条件渲染Lottie动画 */}
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 transition-all duration-300">
+          <div className="flex flex-col items-center justify-center p-8">
+            <div style={{ width: '300px', height: '300px' }}>
+              <dotlottie-wc 
+                src="https://lottie.host/c315f033-35db-4801-ba1f-e2ed26c20447/A4BPcVTvrc.lottie" 
+                style={{ width: '100%', height: '100%' }} 
+                autoplay 
+                loop
+              ></dotlottie-wc>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

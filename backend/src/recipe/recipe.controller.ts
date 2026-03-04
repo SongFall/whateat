@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { RecipeService } from './recipe.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
@@ -30,5 +39,10 @@ export class RecipeController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.recipeService.remove(+id);
+  }
+
+  @Get('user/:userId')
+  findByUserId(@Param('userId') userId: string, @Query() query: any) {
+    return this.recipeService.findByUserId(+userId, query);
   }
 }

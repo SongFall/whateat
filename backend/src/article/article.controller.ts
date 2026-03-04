@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
@@ -48,8 +57,16 @@ export class ArticleController {
   }
 
   @Post(':id/comment')
-  comment(@Param('id') id: string, @Body() body: { userId: number; content: string; parentId?: number }) {
-    return this.articleService.comment(+id, body.userId, body.content, body.parentId);
+  comment(
+    @Param('id') id: string,
+    @Body() body: { userId: number; content: string; parentId?: number },
+  ) {
+    return this.articleService.comment(
+      +id,
+      body.userId,
+      body.content,
+      body.parentId,
+    );
   }
 
   @Post(':id/collect')
@@ -60,5 +77,10 @@ export class ArticleController {
   @Delete(':id/collect')
   uncollect(@Param('id') id: string, @Body() body: { userId: number }) {
     return this.articleService.uncollect(+id, body.userId);
+  }
+
+  @Get('user/:userId')
+  findByUserId(@Param('userId') userId: string, @Query() query: any) {
+    return this.articleService.findByUserId(+userId, query);
   }
 }

@@ -43,8 +43,9 @@ export const createArticle = async (articleData) => {
  */
 export const getAllArticles = async (params = {}) => {
   try {
+    console.log('params:', params);
     const response = await apiClient.get('/articles', params);
-    // 处理后端返回的新数据结构
+    // 直接返回后端返回的数据
     return response;
   } catch (error) {
     console.error('获取文章列表失败:', error);

@@ -10,13 +10,13 @@ import * as bcrypt from 'bcrypt';
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
     // 密码哈希处理
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-    
+
     return this.prisma.user.create({
       data: {
         ...createUserDto,
@@ -51,16 +51,18 @@ export class UserService {
         avatar: true,
         nickname: true,
         bio: true,
+        location: true,
+        preferences: true,
         role: true,
         createdAt: true,
         updatedAt: true,
       },
     });
-    
+
     if (!user) {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
-    
+
     return user;
   }
 
@@ -70,7 +72,7 @@ export class UserService {
       if (updateUserDto.password) {
         updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
       }
-      
+
       return await this.prisma.user.update({
         where: { id },
         data: updateUserDto,
@@ -101,25 +103,28 @@ export class UserService {
     const user = await this.prisma.user.findUnique({
       where: { email: loginUserDto.email },
     });
-    
+
     if (!user) {
       throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
-    
+
     // 验证密码
-    const isPasswordValid = await bcrypt.compare(loginUserDto.password, user.password);
-    
+    const isPasswordValid = await bcrypt.compare(
+      loginUserDto.password,
+      user.password,
+    );
+
     if (!isPasswordValid) {
       throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
-    
+
     // 生成 JWT token
     const token = this.jwtService.sign({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
-    
+
     // 返回用户信息和 token
     return {
       user: {
@@ -142,18 +147,18 @@ export class UserService {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
-    
+
     if (!user) {
       return null;
     }
-    
+
     // 验证密码
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       return null;
     }
-    
+
     // 不返回密码
     const { password: _, ...result } = user;
     return result;

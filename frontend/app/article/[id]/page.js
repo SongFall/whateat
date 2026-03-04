@@ -195,13 +195,19 @@ const FoodBlogArticle = () => {
           <div className="space-y-6 text-gray-800 dark:text-gray-200">
             {/* 这里可以添加内容解析逻辑，例如markdown解析 */}
             <div dangerouslySetInnerHTML={{ __html: article.content ? article.content
-              .replace(/\n/g, '<br>')
-              // 将 ***包裹的内容转换为三级标题
-              .replace(/\*\*\*(.+?)\*\*\*/g, '<h4 class="text-xl font-bold mt-2 mb-1">$1</h4>')
-              // 将 **包裹的内容转换为二级标题
-              .replace(/\*\*(.+?)\*\*/g, '<h3 class="text-2xl font-bold mt-3 mb-2">$1</h3>')
+              // 先处理标题，再处理换行符
+              // 处理三级标题（转换为四级标题）
+              .replace(/^###\s+(.+?)$/gm, '<h4 class="text-lg font-medium mt-2 mb-1">$1</h4>')
+              // 处理二级标题（转换为三级标题）
+              .replace(/^##\s+(.+?)$/gm, '<h3 class="text-xl font-semibold mt-4 mb-2">$1</h3>')
+              // 处理一级标题（转换为二级标题）
+              .replace(/^#\s+(.+?)$/gm, '<h2 class="text-2xl font-bold mt-6 mb-3">$1</h2>')
               // 处理无序列表
-              .replace(/(<br>)*-\s+(.+?)(<br>|$)/g, '<ul class="list-disc pl-6 mb-4"><li>$2</li></ul>')
+              .replace(/^-\s+(.+?)$/gm, '<li class="list-disc pl-6">$1</li>')
+              // 将连续的<li>标签包裹在<ul>中
+              .replace(/(<li class="list-disc pl-6">.*?<\/li>)/gs, '<ul class="space-y-2 mb-4">$1</ul>')
+              // 处理换行符
+              .replace(/\n/g, '<br>')
               // 处理有序列表
               : '' }} />
 
