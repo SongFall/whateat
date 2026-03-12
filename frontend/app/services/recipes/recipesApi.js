@@ -5,7 +5,8 @@ import apiClient from '@/app/request/apiClient';
  */
 export async function fetchFeaturedRecipes() {
   try {
-    return await apiClient.get("/recipes");
+    const response = await apiClient.get("/recipes");
+    return response.data || response;
   } catch (error) {
     console.error("获取推荐菜谱失败:", error);
     // 返回mock数据以防止页面加载失败
@@ -36,7 +37,7 @@ export const createRecipe = async (recipeData) => {
 export const getAllRecipes = async (params = {}) => {
   try {
     const response = await apiClient.get('/recipes', params);
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error('获取菜谱列表失败:', error);
     throw error;
@@ -145,7 +146,7 @@ export const commentRecipe = async (recipeId, commentData) => {
 export const getPopularRecipes = async (limit = 5) => {
   try {
     const response = await apiClient.get('/recipes', { limit, sort: 'popular' });
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error('获取热门菜谱失败:', error);
     throw error;
@@ -161,7 +162,7 @@ export const getPopularRecipes = async (limit = 5) => {
 export const getUserRecipes = async (userId, params = {}) => {
   try {
     const response = await apiClient.get('/recipes', { ...params, userId });
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error(`获取用户 ${userId} 的菜谱失败:`, error);
     throw error;
@@ -177,7 +178,7 @@ export const getUserRecipes = async (userId, params = {}) => {
 export const searchRecipes = async (keyword, params = {}) => {
   try {
     const response = await apiClient.get('/recipes/search', { ...params, keyword });
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error(`搜索菜谱失败:`, error);
     throw error;
@@ -193,7 +194,7 @@ export const searchRecipes = async (keyword, params = {}) => {
 export const getRecipesByTag = async (tag, params = {}) => {
   try {
     const response = await apiClient.get(`/recipes/tag/${tag}`, params);
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error(`根据标签 ${tag} 获取菜谱失败:`, error);
     throw error;

@@ -7,10 +7,14 @@ import {
   Body,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
+import { CreateCommentDto, UpdateCommentDto, CommentQueryDto } from './dto/comment.dto';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { GetCurrentUser } from '../common/decorators/get-current-user.decorator';
 
 @Controller('articles')
 export class ArticleController {
@@ -46,37 +50,91 @@ export class ArticleController {
     return this.articleService.remove(+id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/like')
-  like(@Param('id') id: string, @Body() body: { userId: number }) {
-    return this.articleService.like(+id, body.userId);
+  like(@Param('id') id: string, @GetCurrentUser() user: { userId: number }) {
+    return this.articleService.like(+id, user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id/like')
-  unlike(@Param('id') id: string, @Body() body: { userId: number }) {
-    return this.articleService.unlike(+id, body.userId);
+  unlike(@Param('id') id: string, @GetCurrentUser() user: { userId: number }) {
+    return this.articleService.unlike(+id, user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/comment')
   comment(
     @Param('id') id: string,
-    @Body() body: { userId: number; content: string; parentId?: number },
+    @Body() body: CreateCommentDto,
+    @GetCurrentUser() user: { userId: number },
   ) {
     return this.articleService.comment(
       +id,
-      body.userId,
+      user.userId,
       body.content,
       body.parentId,
     );
   }
 
-  @Post(':id/collect')
-  collect(@Param('id') id: string, @Body() body: { userId: number }) {
-    return this.articleService.collect(+id, body.userId);
+  @UseGuards(JwtAuthGuard)
+  @Put('comments/:commentId')
+  updateComment(
+    @Param('commentId') commentId: string,
+    @Body() body: UpdateCommentDto,
+    @GetCurrentUser() user: { userId: number },
+  ) {
+    return this.articleService.updateComment(
+      +commentId,
+      user.userId,
+      body.content,
+    );
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Delete('comments/:commentId')
+  deleteComment(
+    @Param('commentId') commentId: string,
+    @GetCurrentUser() user: { userId: number },
+  ) {
+    return this.articleService.deleteComment(
+      +commentId,
+      user.userId,
+    );
+  }
+
+  @Get(':id/comments')
+  getComments(
+    @Param('id') id: string,
+    @Query() query: CommentQueryDto,
+  ) {
+    return this.articleService.getComments(
+      +id,
+      query,
+    );
+  }
+
+  @Get('comments/:commentId/replies')
+  getCommentReplies(
+    @Param('commentId') commentId: string,
+    @Query() query: CommentQueryDto,
+  ) {
+    return this.articleService.getCommentReplies(
+      +commentId,
+      query,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/collect')
+  collect(@Param('id') id: string, @GetCurrentUser() user: { id: number }) {
+    return this.articleService.collect(+id, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id/collect')
-  uncollect(@Param('id') id: string, @Body() body: { userId: number }) {
-    return this.articleService.uncollect(+id, body.userId);
+  uncollect(@Param('id') id: string, @GetCurrentUser() user: { id: number }) {
+    return this.articleService.uncollect(+id, user.id);
   }
 
   @Get('user/:userId')

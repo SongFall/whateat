@@ -25,7 +25,8 @@ const ArticlePage = () => {
 
         // 获取热门文章数据
         const response = await getAllArticles();
-        const articlesData = response.data || [];
+        // 检查response是否已经是数组（来自API服务的处理）
+        const articlesData = Array.isArray(response) ? response : (response.data || []);
         const totalCount = response.count || 0;
         console.log('文章数据:', articlesData);
         console.log('文章总数:', totalCount);

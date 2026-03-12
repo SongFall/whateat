@@ -13,7 +13,8 @@ export async function fetchPopularArticles() {
     // if (IS_DEVELOPMENT || FORCE_MOCK_DATA) {
     //   return getMockPopularArticles();
     // }
-    return await apiClient.get('/articles/popular');
+    const response = await apiClient.get('/articles/popular');
+    return response.data || response;
   } catch (error) {
     console.error('获取热门文章失败:', error);
     // 返回mock数据以防止页面加载失败
@@ -149,13 +150,14 @@ export const commentArticle = async (articleId, commentData) => {
 
 /**
  * 收藏文章
- * @param {number} articleId - 文章ID
+ * @param {number|string} articleId - 文章ID
  * @param {number} userId - 用户ID
  * @returns {Promise<Object>} 收藏记录
  */
 export const collectArticle = async (articleId, userId) => {
   try {
-    const response = await apiClient.post(`/articles/${articleId}/collect`, { userId });
+    const articleIdNum = parseInt(articleId);
+    const response = await apiClient.post(`/articles/${articleIdNum}/collect`, { userId });
     return response;
   } catch (error) {
     console.error(`收藏文章 ${articleId} 失败:`, error);
@@ -165,13 +167,14 @@ export const collectArticle = async (articleId, userId) => {
 
 /**
  * 取消收藏文章
- * @param {number} articleId - 文章ID
+ * @param {number|string} articleId - 文章ID
  * @param {number} userId - 用户ID
  * @returns {Promise<Object>} 收藏记录
  */
 export const uncollectArticle = async (articleId, userId) => {
   try {
-    const response = await apiClient.delete(`/articles/${articleId}/collect`, { userId });
+    const articleIdNum = parseInt(articleId);
+    const response = await apiClient.delete(`/articles/${articleIdNum}/collect`, { userId });
     return response;
   } catch (error) {
     console.error(`取消收藏文章 ${articleId} 失败:`, error);
@@ -188,7 +191,7 @@ export const getPopularArticles = async (limit = 5) => {
   try {
     // 假设后端支持通过参数获取热门文章
     const response = await apiClient.get('/articles', { limit, sort: 'popular' });
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error('获取热门文章失败:', error);
     throw error;
@@ -205,10 +208,29 @@ export const getUserArticles = async (userId, params = {}) => {
   try {
     // 假设后端支持通过userId筛选文章
     const response = await apiClient.get('/articles', { ...params, userId });
-    return response;
+    return response.data || response;
   } catch (error) {
     console.error(`获取用户 ${userId} 的文章失败:`, error);
     throw error;
+  }
+};
+
+/**
+ * 检查文章是否已被收藏
+ * @param {number} articleId - 文章ID
+ * @param {number} userId - 用户ID
+ * @returns {Promise<boolean>} 是否已收藏
+ */
+export const checkArticleCollectionStatus = async (articleId, userId) => {
+  try {
+    // 从用户收藏列表中检查
+    const response = await apiClient.get(`/collections/user/${userId}`, { type: 'article' });
+    // 确保类型一致进行比较
+    const articleIdNum = parseInt(articleId);
+    return (response.data || response).some(collection => collection.articleId === articleIdNum);
+  } catch (error) {
+    console.error(`检查文章 ${articleId} 收藏状态失败:`, error);
+    return false;
   }
 };
 

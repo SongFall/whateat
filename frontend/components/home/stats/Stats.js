@@ -1,12 +1,19 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { Users, Utensils, FileText } from "lucide-react";
+import apiClient from '@/app/request/apiClient';
 
 const FoodStatsSection = () => {
   // 1. 用 React ref 替代 DOM ID，监听整个统计模块的滚动状态
   const statsContainerRef = useRef(null);
   // 2. 状态管理：标记动画是否已执行（避免重复触发）
   const [animationTriggered, setAnimationTriggered] = useState(false);
+  // 3. 状态管理：存储统计数据
+  const [statsData, setStatsData] = useState({
+    users: 0,
+    recipes: 0,
+    articles: 0
+  });
 
   // 数字动画引用（保持不变）
   const statsRefs = {
@@ -36,6 +43,30 @@ const FoodStatsSection = () => {
     window.requestAnimationFrame(step);
   };
 
+  // 获取统计数据
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await apiClient.get('/stats');
+        setStatsData({
+          users: response.users || 0,
+          recipes: response.recipes || 0,
+          articles: response.articles || 0
+        });
+      } catch (error) {
+        console.error('获取统计数据失败:', error);
+        // 失败时使用默认值
+        setStatsData({
+          users: 156000,
+          recipes: 8900,
+          articles: 3200
+        });
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   // 3. 重构滚动监听：用 ref + IntersectionObserver，不依赖 document
   useEffect(() => {
     // 确保在客户端环境执行（Next.js 服务端无 window）
@@ -46,9 +77,9 @@ const FoodStatsSection = () => {
         entries.forEach((entry) => {
           // 模块进入视图 + 动画未执行时，触发动画
           if (entry.isIntersecting && !animationTriggered) {
-            animateValue(statsRefs.users, 0, 156000, 2000); // 注册人数
-            animateValue(statsRefs.recipes, 0, 8900, 1800); // 菜谱数
-            animateValue(statsRefs.articles, 0, 3200, 1600); // 文章数
+            animateValue(statsRefs.users, 0, statsData.users, 2000); // 注册人数
+            animateValue(statsRefs.recipes, 0, statsData.recipes, 1800); // 菜谱数
+            animateValue(statsRefs.articles, 0, statsData.articles, 1600); // 文章数
             setAnimationTriggered(true); // 标记动画已执行，避免重复
             observer.unobserve(entry.target); // 停止监听
           }
@@ -68,14 +99,14 @@ const FoodStatsSection = () => {
         observer.unobserve(statsContainerRef.current);
       }
     };
-  }, [animationTriggered]); // 依赖 animationTriggered，避免闭包问题
+  }, [animationTriggered, statsData]); // 依赖 animationTriggered 和 statsData
 
-  // 美食网站统计数据（保持不变）
+  // 美食网站统计数据（使用真实数据）
   const foodStatsData = [
     {
       title: "注册美食家",
       icon: <Users className="h-8 w-8 text-orange-500 dark:text-orange-400" />,
-      value: 156000,
+      value: statsData.users,
       suffix: "+",
       desc: "来自全国各地的美食爱好者共同交流",
       ref: statsRefs.users,
@@ -83,7 +114,7 @@ const FoodStatsSection = () => {
     {
       title: "精选菜谱",
       icon: <Utensils className="h-8 w-8 text-orange-500 dark:text-orange-400" />,
-      value: 8900,
+      value: statsData.recipes,
       suffix: "+",
       desc: "覆盖家常菜、烘焙、西餐等20+品类",
       ref: statsRefs.recipes,
@@ -91,7 +122,7 @@ const FoodStatsSection = () => {
     {
       title: "美食攻略",
       icon: <FileText className="h-8 w-8 text-orange-500 dark:text-orange-400" />,
-      value: 3200,
+      value: statsData.articles,
       suffix: "+",
       desc: "食材选购、烹饪技巧、探店指南全涵盖",
       ref: statsRefs.articles,

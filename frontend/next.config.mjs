@@ -17,6 +17,7 @@ const nextConfig = {
     images: {
     domains: [
       'whateat01.oss-cn-beijing.aliyuncs.com',
+      'img.freepik.com',
       'picsum.photos', // 允许加载 picsum 图片
       'example.com', // 允许加载 example.com 图片
       'localhost', // 本地开发用（可选）

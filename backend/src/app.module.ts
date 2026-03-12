@@ -11,6 +11,7 @@ import { CollectionModule } from './collection/collection.module';
 import { FollowModule } from './follow/follow.module';
 import { AiModule } from './ai/ai.module';
 import { CommonModule } from './common/common.module';
+import { TestModule } from './test/test.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CommonModule } from './common/common.module';
     CollectionModule,
     FollowModule,
     AiModule,
+    TestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -110,9 +110,6 @@ const RecipeDetailPage = ({ params }) => {
                 <button className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full font-medium hover:bg-white/30 transition-all duration-300">
                   📤 分享
                 </button>
-                <button className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full font-medium hover:bg-white/30 transition-all duration-300">
-                  💬 评论
-                </button>
               </div>
             </div>
           </div>

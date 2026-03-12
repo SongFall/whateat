@@ -34,8 +34,12 @@ const Header = () => {
     // 监听存储变化（用于其他页面登录/登出时更新状态）
     window.addEventListener('storage', checkLoginStatus);
     
+    // 定期检查登录状态，确保在同一个标签页中登录后能及时更新
+    const intervalId = setInterval(checkLoginStatus, 1000);
+    
     return () => {
       window.removeEventListener('storage', checkLoginStatus);
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -105,8 +109,8 @@ const Header = () => {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (searchQuery.trim()) {
-                  // 这里可以添加搜索逻辑，比如跳转到搜索结果页
-                  window.location.href = `/search?query=${encodeURIComponent(searchQuery.trim())}`;
+                  // 跳转到搜索结果页
+                  window.location.href = `/result?q=${encodeURIComponent(searchQuery.trim())}`;
                 }
               }}>
                 <input
@@ -251,11 +255,14 @@ const Header = () => {
                     onClick={() => {
                       // 登出逻辑
                       localStorage.removeItem('token');
+                      localStorage.removeItem('userId');
                       localStorage.removeItem('userInfo');
                       setIsLoggedIn(false);
                       setUserInfo(null);
                       // 触发存储事件，通知其他页面
                       window.dispatchEvent(new Event('storage'));
+                      // 跳转到登录页面
+                      window.location.href = '/auth';
                     }}
                   >
                     退出登录

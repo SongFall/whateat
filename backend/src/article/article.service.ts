@@ -25,7 +25,6 @@ export class ArticleService {
           { content: { contains: search } },
           { tags: { contains: search } },
           { category: { contains: search } },
-          { readingTime: { contains: search } },
         ],
       }),
       ...(category && { category }),
@@ -206,20 +205,216 @@ export class ArticleService {
     });
   }
 
-  comment(
+  async comment(
     articleId: number,
     userId: number,
     content: string,
     parentId?: number,
   ) {
-    return this.prisma.comment.create({
+    const comment = await this.prisma.comment.create({
       data: {
         articleId,
         userId,
         content,
         parentId,
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            nickname: true,
+          },
+        },
+      },
     });
+    
+    return {
+      ...comment,
+      author: comment.user?.nickname || comment.user?.username || '未知用户',
+      authorAvatar: comment.user?.avatar,
+      createdAt: comment.createdAt.toISOString().split('T')[0],
+    };
+  }
+
+  async updateComment(
+    commentId: number,
+    userId: number,
+    content: string,
+  ) {
+    // 先检查评论是否存在且属于该用户
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+    
+    if (!comment) {
+      throw new Error('评论不存在');
+    }
+    
+    if (comment.userId !== userId) {
+      throw new Error('无权修改此评论');
+    }
+    
+    const updatedComment = await this.prisma.comment.update({
+      where: { id: commentId },
+      data: { content },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            nickname: true,
+          },
+        },
+      },
+    });
+    
+    return {
+      ...updatedComment,
+      author: updatedComment.user?.nickname || updatedComment.user?.username || '未知用户',
+      authorAvatar: updatedComment.user?.avatar,
+      createdAt: updatedComment.createdAt.toISOString().split('T')[0],
+    };
+  }
+
+  async deleteComment(
+    commentId: number,
+    userId: number,
+  ) {
+    // 先检查评论是否存在
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      include: {
+        article: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+    
+    if (!comment) {
+      throw new Error('评论不存在');
+    }
+    
+    // 检查用户是否为评论作者或文章作者
+    const isCommentAuthor = comment.userId === userId;
+    const isArticleAuthor = comment.article.userId === userId;
+    
+    if (!isCommentAuthor && !isArticleAuthor) {
+      throw new Error('无权删除此评论');
+    }
+    
+    return this.prisma.comment.delete({
+      where: { id: commentId },
+    });
+  }
+
+  async getComments(
+    articleId: number,
+    query: { page?: number; limit?: number },
+  ) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+    
+    const [comments, count] = await Promise.all([
+      this.prisma.comment.findMany({
+        where: { articleId, parentId: null }, // 只获取顶级评论
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
+            },
+          },
+          replies: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  avatar: true,
+                  nickname: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.comment.count({ where: { articleId, parentId: null } }),
+    ]);
+    
+    // 处理评论数据
+    const processedComments = comments.map(comment => ({
+      ...comment,
+      author: comment.user?.nickname || comment.user?.username || '未知用户',
+      authorAvatar: comment.user?.avatar,
+      createdAt: comment.createdAt.toISOString().split('T')[0],
+      replies: comment.replies.map(reply => ({
+        ...reply,
+        author: reply.user?.nickname || reply.user?.username || '未知用户',
+        authorAvatar: reply.user?.avatar,
+        createdAt: reply.createdAt.toISOString().split('T')[0],
+      })),
+    }));
+    
+    return {
+      data: processedComments,
+      count,
+      page,
+      limit,
+    };
+  }
+
+  async getCommentReplies(
+    commentId: number,
+    query: { page?: number; limit?: number },
+  ) {
+    const { page = 1, limit = 10 } = query;
+    const skip = (page - 1) * limit;
+    
+    const [replies, count] = await Promise.all([
+      this.prisma.comment.findMany({
+        where: { parentId: commentId },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.comment.count({ where: { parentId: commentId } }),
+    ]);
+    
+    // 处理回复数据
+    const processedReplies = replies.map(reply => ({
+      ...reply,
+      author: reply.user?.nickname || reply.user?.username || '未知用户',
+      authorAvatar: reply.user?.avatar,
+      createdAt: reply.createdAt.toISOString().split('T')[0],
+    }));
+    
+    return {
+      data: processedReplies,
+      count,
+      page,
+      limit,
+    };
   }
 
   collect(articleId: number, userId: number) {

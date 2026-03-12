@@ -87,7 +87,7 @@ export default function CookingPage() {
       } else {
         console.log("No recipeId found in response");
         }
-      }, 1500);
+      }, 100);
       
       // 重置表单
       setTimeout(() => {
@@ -321,13 +321,14 @@ export default function CookingPage() {
 
       {/* 条件渲染Lottie动画 */}
       {isSubmitting && (
-        <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50 transition-all duration-300">
-          <div className="flex flex-col items-center justify-center p-8">
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 transition-all duration-300">
+          <div className="flex flex-col items-center justify-center p-8 bg-white bg-opacity-90 rounded-2xl shadow-lg">
             <div style={{ width: '300px', height: '300px' }}>
               <dotlottie-wc 
                 src="https://lottie.host/c315f033-35db-4801-ba1f-e2ed26c20447/A4BPcVTvrc.lottie" 
                 style={{ width: '100%', height: '100%' }} 
                 autoplay 
+                speed="0.8"
                 loop
               ></dotlottie-wc>
             </div>

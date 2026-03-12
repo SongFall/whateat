@@ -8,25 +8,30 @@ datasource db {
 }
 
 model User {
-  id          Int          @id @default(autoincrement())
-  username    String       @unique @db.VarChar(50)
-  email       String       @unique @db.VarChar(100)
-  password    String       @db.VarChar(255)
-  avatar      String?      @db.VarChar(255)
-  nickname    String?      @db.VarChar(50)
-  bio         String?      @db.Text
-  location    String?      @db.VarChar(100)
-  preferences String?      @db.Text
-  role        String       @default("user") @db.VarChar(20)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  articles    Article[]
-  collections Collection[]
-  comments    Comment[]
-  followings  Follow[]     @relation("Following")
-  followers   Follow[]     @relation("Follower")
-  likes       Like[]
-  recipes     Recipe[]
+  id              Int          @id @default(autoincrement())
+  username        String       @unique @db.VarChar(50)
+  email           String       @unique @db.VarChar(100)
+  password        String       @db.VarChar(255)
+  avatar          String?      @db.VarChar(255)
+  nickname        String?      @db.VarChar(50)
+  bio             String?      @db.Text
+  location        String?      @db.VarChar(100)
+  preferences     String?      @db.Text
+  role            String       @default("user") @db.VarChar(20)
+  followingCount  Int          @default(0)
+  followerCount   Int          @default(0)
+  likeCount       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  articles        Article[]
+  collections     Collection[]
+  comments        Comment[]
+  followings      Follow[]     @relation("Following")
+  followers       Follow[]     @relation("Follower")
+  likes           Like[]
+  recipes         Recipe[]
+  userComments    UserComment[] @relation("userComments")
+  targetUserComments UserComment[] @relation("targetUserComments")
 }
 
 model Recipe {
@@ -80,9 +85,12 @@ model Comment {
   updatedAt DateTime @updatedAt
   article   Article  @relation(fields: [articleId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+  parent    Comment? @relation("Replies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("Replies")
 
   @@index([articleId], map: "Comment_articleId_fkey")
   @@index([userId], map: "Comment_userId_fkey")
+  @@index([parentId], map: "Comment_parentId_fkey")
 }
 
 model Like {
@@ -123,4 +131,22 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@index([followingId], map: "Follow_following_id_fkey")
+}
+
+model UserComment {
+  id           Int      @id @default(autoincrement())
+  content      String   @db.Text
+  userId       Int      // 留言者ID
+  targetUserId Int      // 被留言者ID
+  parentId     Int?     // 父留言ID（用于回复）
+  read         Boolean  @default(false) // 被留言者是否已读
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation("userComments", fields: [userId], references: [id])
+  targetUser   User     @relation("targetUserComments", fields: [targetUserId], references: [id])
+  parent       UserComment? @relation("Replies", fields: [parentId], references: [id])
+  replies      UserComment[] @relation("Replies")
+
+  @@index([userId], map: "UserComment_userId_fkey")
+  @@index([targetUserId], map: "UserComment_targetUserId_fkey")
 }

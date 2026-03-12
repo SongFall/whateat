@@ -7,23 +7,26 @@ const FORCE_MOCK_DATA = process.env.NEXT_PUBLIC_FORCE_MOCK_DATA === 'true';
 /**
  * 获取用户资料
  */
-export async function getUserProfile() {
+export async function getUserProfile(userId) {
   try {
     // 在开发环境中或强制使用mock数据时，直接返回mock数据
     // if (IS_DEVELOPMENT || FORCE_MOCK_DATA) {
     //   return getMockUserProfile();
     // }
     
-    // 获取当前用户ID
-    const userId = localStorage.getItem('userId');
     if (!userId) {
-      throw new Error('用户未登录');
+      // 如果没有传入userId，尝试从localStorage获取当前用户ID
+      userId = localStorage.getItem('userId');
+      if (!userId) {
+        // 返回null表示用户未登录，而不是抛出错误
+        return null;
+      }
     }
     
     return await apiClient.get(`/users/${userId}`);
   } catch (error) {
     console.error('获取用户资料失败:', error);
-    // 返回mock数据以防止页面加载失败
+    // 其他错误返回mock数据以防止页面加载失败
     return getMockUserProfile();
   }
 }
@@ -48,6 +51,16 @@ export async function saveUserPreferences(preferences) {
 export const register = async (userData) => {
   try {    
     const response = await apiClient.post('/users', userData);
+    
+    // 保存token和用户信息到localStorage
+    if (response.token) {
+      localStorage.setItem('token', response.token);
+    }
+    if (response.user?.id) {
+      localStorage.setItem('userId', response.user.id);
+      localStorage.setItem('userInfo', JSON.stringify(response.user));
+    }
+    
     return response;
   } catch (error) {
     console.error('创建用户失败:', error);
@@ -550,3 +563,80 @@ function getMockUserProfile() {
     createdAt: new Date().toISOString()
   };
 }
+
+/**
+ * 获取用户留言列表
+ * @param {number} userId - 用户ID
+ * @returns {Promise<Array>} 用户留言列表
+ */
+export const getUserComments = async (userId) => {
+  try {
+    const response = await apiClient.get(`/user-content/${userId}/comments`);
+    return response.data;
+  } catch (error) {
+    console.error(`获取用户 ${userId} 的留言列表失败:`, error);
+    throw error;
+  }
+};
+
+/**
+ * 创建用户留言
+ * @param {number} targetUserId - 被留言者ID
+ * @param {string} content - 留言内容
+ * @param {number} [parentId] - 父留言ID（用于回复）
+ * @returns {Promise<Object>} 创建的留言信息
+ */
+export const createUserComment = async (targetUserId, content, parentId) => {
+  try {
+    const response = await apiClient.post(`/user-content/${targetUserId}/comments`, { content, parentId });
+    return response.data;
+  } catch (error) {
+    console.error(`创建用户留言失败:`, error);
+    throw error;
+  }
+};
+
+/**
+ * 删除用户留言
+ * @param {number} commentId - 留言ID
+ * @returns {Promise<Object>} 删除结果
+ */
+export const deleteUserComment = async (commentId) => {
+  try {
+    const response = await apiClient.delete(`/user-content/comments/${commentId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`删除用户留言失败:`, error);
+    throw error;
+  }
+};
+
+/**
+ * 点赞用户
+ * @param {number} targetUserId - 被点赞者ID
+ * @returns {Promise<Object>} 点赞结果
+ */
+export const likeUser = async (targetUserId) => {
+  try {
+    const response = await apiClient.post(`/user-content/${targetUserId}/like`);
+    return response;
+  } catch (error) {
+    console.error(`点赞用户失败:`, error);
+    throw error;
+  }
+};
+
+/**
+ * 取消点赞用户
+ * @param {number} targetUserId - 被点赞者ID
+ * @returns {Promise<Object>} 取消点赞结果
+ */
+export const unlikeUser = async (targetUserId) => {
+  try {
+    const response = await apiClient.post(`/user-content/${targetUserId}/unlike`);
+    return response;
+  } catch (error) {
+    console.error(`取消点赞用户失败:`, error);
+    throw error;
+  }
+};

@@ -66,13 +66,24 @@ const AuthPage = () => {
       if (isLogin) {
         // 登录逻辑
         response = await login({ email, password });
+        // 登录成功后重定向到首页
+        router.push("/");
       } else {
         // 注册逻辑
         response = await register({ username, email, password });
+        // 注册成功后显示成功提示，然后跳转到登录页面
+        setErrors({ submit: "注册成功！正在跳转到登录页面..." });
+        // 延迟1.5秒后跳转到登录页面
+        setTimeout(() => {
+          setIsLogin(true);
+          // 清空表单
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setUsername("");
+          setErrors({});
+        }, 1500);
       }
-
-      // 登录/注册成功后重定向到首页
-      router.push("/");
     } catch (error) {
       console.error(`${isLogin ? "登录" : "注册"}失败:`, error);
       
@@ -120,9 +131,9 @@ const AuthPage = () => {
           </p>
         </div>
 
-        {/* 错误提示 */}
+        {/* 错误提示和成功提示 */}
         {errors.submit && (
-          <div className="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
+          <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${errors.submit.includes('成功') ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
             {errors.submit}
           </div>
         )}
@@ -146,7 +157,7 @@ const AuthPage = () => {
                 className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:outline-none transition-colors ${
                   errors.username
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500/30 dark:border-red-700"
-                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    : "border-gray-300 focus:border-orange-500 focus:ring-orange-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 }`}
                 placeholder="请输入您的用户名"
               />
@@ -172,7 +183,7 @@ const AuthPage = () => {
               className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:outline-none transition-colors ${
                 errors.email
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500/30 dark:border-red-700"
-                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  : "border-gray-300 focus:border-orange-500 focus:ring-orange-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               }`}
               placeholder="your@email.com"
             />
@@ -193,7 +204,7 @@ const AuthPage = () => {
               {isLogin && (
                 <a
                   href="#"
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                  className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
                 >
                   忘记密码?
                 </a>
@@ -207,7 +218,7 @@ const AuthPage = () => {
               className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:outline-none transition-colors ${
                 errors.password
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500/30 dark:border-red-700"
-                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  : "border-gray-300 focus:border-orange-500 focus:ring-orange-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               }`}
               placeholder="请输入您的密码"
             />
@@ -233,7 +244,7 @@ const AuthPage = () => {
                 className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:outline-none transition-colors ${
                   errors.confirmPassword
                     ? "border-red-300 focus:border-red-500 focus:ring-red-500/30 dark:border-red-700"
-                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    : "border-gray-300 focus:border-orange-500 focus:ring-orange-500/30 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 }`}
                 placeholder="请再次输入密码"
               />
@@ -249,7 +260,7 @@ const AuthPage = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:from-blue-700 hover:to-violet-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            className="w-full py-3 px-4 bg-gradient-to-r from-orange-600 to-yellow-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:from-orange-400 hover:to-yellow-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center">
@@ -325,7 +336,7 @@ const AuthPage = () => {
                 还没有账号?{" "}
                 <button
                   onClick={() => setIsLogin(false)}
-                  className="text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                  className="text-orange-600 dark:text-orange-400 font-medium hover:text-orange-700 dark:hover:text-orange-300 transition-colors"
                 >
                   立即注册
                 </button>
@@ -335,7 +346,7 @@ const AuthPage = () => {
                 已有账号?{" "}
                 <button
                   onClick={() => setIsLogin(true)}
-                  className="text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                  className="text-orange-600 dark:text-orange-400 font-medium hover:text-orange-700 dark:hover:text-orange-300 transition-colors"
                 >
                   立即登录
                 </button>
@@ -348,11 +359,11 @@ const AuthPage = () => {
         <div className="text-center mt-6">
           <p className="text-xs text-gray-500 dark:text-gray-500">
             点击"{isLogin ? "登录" : "注册"}"，即表示您同意我们的
-            <a href="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <a href="/terms" className="text-orange-600 dark:text-orange-400 hover:underline">
               使用条款
             </a>
             和
-            <a href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <a href="/privacy" className="text-orange-600 dark:text-orange-400 hover:underline">
               隐私政策
             </a>
           </p>

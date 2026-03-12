@@ -17,40 +17,58 @@ export class RecipeService {
     const { page = 1, limit = 10, search, difficulty } = query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const recipes = await this.prisma.recipe.findMany({
-      where: {
-        ...(search && {
-          OR: [
-            { title: { contains: search } },
-            { description: { contains: search } },
-            { ingredients: { contains: search } },
-          ],
-        }),
-        ...(difficulty && { difficulty }),
-      },
-      skip,
-      take: Number(limit),
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            avatar: true,
-            nickname: true,
+    // 构建查询条件
+    const where = {
+      ...(search && {
+        OR: [
+          { title: { contains: search } },
+          { description: { contains: search } },
+          { ingredients: { contains: search } },
+        ],
+      }),
+      ...(difficulty && { difficulty }),
+    };
+
+    // 并行执行查询
+    const [recipes, count] = await Promise.all([
+      this.prisma.recipe.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.recipe.count({ where }),
+    ]);
 
     // 处理返回的数据结构，使其与前端期望一致
-    return recipes.map((recipe) => ({
+    const processedRecipes = recipes.map((recipe) => ({
       ...recipe,
+      author: recipe.user?.nickname || recipe.user?.username || '未知作者',
+      authorAvatar: recipe.user?.avatar,
+      createdAt: recipe.createdAt.toISOString().split('T')[0],
       imageUrl: recipe.coverImage,
       prepTime: '10分钟', // 默认为10分钟
       cookTime: recipe.cookTime ? `${recipe.cookTime}分钟` : '15分钟',
       tags: ['家常菜', 'AI生成'], // 默认标签
     }));
+
+    // 返回包含食谱列表和总数的对象
+    return {
+      data: processedRecipes,
+      count,
+      page: Number(page),
+      limit: Number(limit),
+    };
   }
 
   async findOne(id: number) {
@@ -171,30 +189,45 @@ export class RecipeService {
     const { page = 1, limit = 10 } = query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const recipes = await this.prisma.recipe.findMany({
-      where: { userId },
-      skip,
-      take: Number(limit),
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            avatar: true,
-            nickname: true,
+    // 并行执行查询
+    const [recipes, count] = await Promise.all([
+      this.prisma.recipe.findMany({
+        where: { userId },
+        skip,
+        take: Number(limit),
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.recipe.count({ where: { userId } }),
+    ]);
 
     // 处理返回的数据结构，使其与前端期望一致
-    return recipes.map((recipe) => ({
+    const processedRecipes = recipes.map((recipe) => ({
       ...recipe,
+      author: recipe.user?.nickname || recipe.user?.username || '未知作者',
+      authorAvatar: recipe.user?.avatar,
+      createdAt: recipe.createdAt.toISOString().split('T')[0],
       imageUrl: recipe.coverImage,
       prepTime: '10分钟', // 默认为10分钟
       cookTime: recipe.cookTime ? `${recipe.cookTime}分钟` : '15分钟',
       tags: ['家常菜', 'AI生成'], // 默认标签
     }));
+
+    // 返回包含食谱列表和总数的对象
+    return {
+      data: processedRecipes,
+      count,
+      page: Number(page),
+      limit: Number(limit),
+    };
   }
 }

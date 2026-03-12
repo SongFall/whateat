@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query } from '@nestjs/common';
 import { FollowService } from './follow.service';
 
 @Controller('follows')
@@ -6,13 +6,13 @@ export class FollowController {
   constructor(private readonly followService: FollowService) {}
 
   @Post()
-  follow(@Body() body: { followerId: number; followingId: number }) {
-    return this.followService.follow(body.followerId, body.followingId);
+  follow(@Body() body: { followerId: string; followingId: string }) {
+    return this.followService.follow(+body.followerId, +body.followingId);
   }
 
   @Delete()
-  unfollow(@Body() body: { followerId: number; followingId: number }) {
-    return this.followService.unfollow(body.followerId, body.followingId);
+  unfollow(@Body() body: { followerId: string; followingId: string }) {
+    return this.followService.unfollow(+body.followerId, +body.followingId);
   }
 
   @Get('followings/:userId')
@@ -26,7 +26,7 @@ export class FollowController {
   }
 
   @Get('check')
-  checkFollow(@Body() body: { followerId: number; followingId: number }) {
-    return this.followService.checkFollow(body.followerId, body.followingId);
+  checkFollow(@Query('followerId') followerId: string, @Query('followingId') followingId: string) {
+    return this.followService.checkFollow(+followerId, +followingId);
   }
 }

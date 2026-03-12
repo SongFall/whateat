@@ -1,7 +1,46 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import apiClient from "../request/apiClient";
-import { getUserProfile, uploadUserAvatar, updateUser, getUserArticles, getUserRecipes, getUserCollections } from "../services/users/usersApi";
+import { getUserProfile, uploadUserAvatar, updateUser, getUserArticles, getUserRecipes, getUserCollections, getUserComments, createUserComment, deleteUserComment, getFollowingCount, getFollowersCount } from "../services/users/usersApi";
+import { formatTime } from "../utils/timeUtils";
+import FollowModal from "../../components/modal/FollowModal";
+
+// 点赞按钮发光效果样式
+const LikeButtonStyle = () => (
+  <style jsx global>{`
+    .like-button-glow {
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
+      transition: all 0.3s ease;
+    }
+    .like-button-glow:hover {
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    }
+    .like-button-glow::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+      transform: scale(0);
+      animation: pulse 2s infinite;
+      pointer-events: none;
+    }
+    @keyframes pulse {
+      0% {
+        transform: scale(0);
+        opacity: 0.5;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 0;
+      }
+    }
+  `}</style>
+);
 
 const MyPage = () => {
   const [user, setUser] = useState(null);
@@ -21,6 +60,12 @@ const MyPage = () => {
   const [contentLoading, setContentLoading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(0);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [isCommenting, setIsCommenting] = useState(false);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
 
   // 加载用户数据
   useEffect(() => {
@@ -28,6 +73,13 @@ const MyPage = () => {
       try {
         setLoading(true);
         const userData = await getUserProfile();
+        
+        // 如果返回null，表示用户未登录，重定向到登录页面
+        if (!userData) {
+          window.location.href = '/auth';
+          return;
+        }
+        
         setUser(userData);
         // 修复：使用默认对象而不是依赖外部preferences变量
         setPreferences(
@@ -63,11 +115,14 @@ const MyPage = () => {
     try {
       setContentLoading(true);
       
-      // 并行加载文章、食谱和收藏数据
-      const [articlesData, recipesData, favoritesData] = await Promise.all([
+      // 并行加载文章、食谱、收藏、留言、关注和粉丝数据
+      const [articlesData, recipesData, favoritesData, commentsData, following, followers] = await Promise.all([
         getUserArticles(userId),
         getUserRecipes(userId),
-        getUserCollections(userId)
+        getUserCollections(userId),
+        getUserComments(userId),
+        getFollowingCount(userId),
+        getFollowersCount(userId)
       ]);
 
       console.log('articlesData:', articlesData);
@@ -75,6 +130,9 @@ const MyPage = () => {
       setArticles(articlesData.data);
       setRecipes(recipesData);
       setFavorites(favoritesData);
+      setComments(commentsData);
+      setFollowingCount(following);
+      setFollowerCount(followers);
     } catch (err) {
       console.error("Failed to load user content:", err);
     } finally {
@@ -111,6 +169,45 @@ const MyPage = () => {
     });
   };
 
+  // 打开关注/粉丝modal
+  const openFollowModal = () => {
+    setIsFollowModalOpen(true);
+  };
+
+  // 处理留言提交
+  const handleCommentSubmit = async () => {
+    if (!commentText.trim()) return;
+    
+    try {
+      setIsCommenting(true);
+      // 调用API提交留言
+      const userId = localStorage.getItem('userId');
+      const newComment = await createUserComment(userId, commentText);
+      // 检查newComment是否存在
+      if (newComment) {
+        // 成功后更新留言列表，确保prev是数组
+        setComments(prev => [newComment, ...(Array.isArray(prev) ? prev : [])]);
+        setCommentText('');
+      }
+    } catch (err) {
+      console.error("Failed to submit comment:", err);
+    } finally {
+      setIsCommenting(false);
+    }
+  };
+
+  // 处理留言删除
+  const handleDeleteComment = async (commentId) => {
+    try {
+      // 调用API删除留言
+      await deleteUserComment(commentId);
+      // 成功后更新留言列表，过滤掉被删除的留言
+      setComments(prev => (Array.isArray(prev) ? prev.filter(comment => comment.id !== commentId) : []));
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+    }
+  };
+
   // 保存用户资料
   const saveUserProfile = async () => {
     try {
@@ -132,11 +229,22 @@ const MyPage = () => {
       });
 
       // 更新本地用户数据
-      setUser((prev) => ({
-        ...prev,
+      const updatedUser = {
+        ...user,
         ...updateData,
         preferences,
-      }));
+      };
+      setUser(updatedUser);
+
+      // 更新localStorage中的用户信息，确保header组件的头像同步更新
+      const existingUserInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const updatedUserInfo = {
+        ...existingUserInfo,
+        avatar: updatedUser.avatar,
+        username: updatedUser.username || existingUserInfo.username,
+        nickname: updatedUser.nickname || existingUserInfo.nickname,
+      };
+      localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
 
       setIsModalOpen(false);
     } catch (err) {
@@ -178,8 +286,22 @@ const MyPage = () => {
   }
 
   // 渲染用户资料
+  if (!user) {
+    // 如果user为null，不渲染任何内容，等待重定向
+    return null;
+  }
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <LikeButtonStyle />
+      
+      {/* 关注/粉丝modal */}
+      <FollowModal 
+        isOpen={isFollowModalOpen} 
+        onClose={() => setIsFollowModalOpen(false)}
+        followingCount={followingCount}
+        followerCount={followerCount}
+      />
       {/* 主内容区域 */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 1. 顶部个人信息展示区 */}
@@ -195,17 +317,28 @@ const MyPage = () => {
               
               {/* 基本信息 */}
               <div className="flex-1 text-center md:text-left">
-                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.nickname}</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">美食爱好者</p>
                   </div>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg hover:from-orange-600 hover:to-pink-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 self-center md:self-auto"
-                  >
-                    编辑个人资料
-                  </button>
+                  <div className="flex gap-3 self-center md:self-auto">
+                    <button
+                      onClick={() => setIsModalOpen(true)}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-lg hover:from-orange-600 hover:to-pink-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+                    >
+                      编辑个人资料
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 self-center md:self-auto like-button-glow"
+                    >
+                      <div className="flex items-center gap-1">
+                        <svg className="h-4 w-4 text-red-500" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        <span>{user.likeCount || 0}</span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
                 
                 {/* 个人简介 */}
@@ -565,10 +698,13 @@ const MyPage = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">我的文章</p>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{articles.length}</h3>
               </div>
-              <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+              <div className="flex items-center gap-2">
+                
+                <a href="/article/add" className="w-10 h-10 rounded-full bg-orange-100 dark:bg-blue-900/30 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors">
+                  <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>
@@ -578,7 +714,7 @@ const MyPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">我的食谱</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{recipes.length}</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{recipes.length || '0'}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
                 <svg className="h-5 w-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -593,7 +729,7 @@ const MyPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">我的收藏</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">0</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{favorites.length}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
                 <svg className="h-5 w-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,11 +740,11 @@ const MyPage = () => {
           </div>
           
           {/* 关注/粉丝 */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={openFollowModal}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">关注 / 粉丝</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">32 / 156</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{followingCount} / {followerCount}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                 <svg className="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -625,9 +761,10 @@ const MyPage = () => {
           <div className="border-b border-gray-200 dark:border-gray-700">
             <div className="flex overflow-x-auto">
               {[
-                { id: 'articles', label: '我的文章', icon: '📝' },
+                { id: 'articles', label: '我的文章', icon: '➕' },
                 { id: 'recipes', label: '我的食谱', icon: '🍳' },
-                { id: 'favorites', label: '我的收藏', icon: '❤️' }
+                { id: 'favorites', label: '我的收藏', icon: '❤️' },
+                { id: 'comments', label: '我的留言', icon: '💬' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -710,10 +847,12 @@ const MyPage = () => {
                   )}
                 </div>
                 
-                {/* 查看更多 */}
-                <button className="w-full mt-6 py-2 text-center text-sm text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors">
-                  查看更多文章 →
-                </button>
+                {/* 去创作 */}
+                <div className="flex justify-center">
+                  <a href="/article/add" className="w-full mt-6 py-2 text-center text-sm text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors">
+                  去创作 →
+                </a>
+                </div>
               </div>
             )}
             
@@ -798,7 +937,7 @@ const MyPage = () => {
                     </div>
                   ) : favorites.length > 0 ? (
                     favorites.map((favorite) => (
-                      <div key={favorite.id} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                      <div key={favorite.id} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" onClick={() => window.open(`/article/${favorite.article?.id || favorite.recipe?.id}`, '_blank')}>
                         <div className="w-full md:w-40 h-24 rounded-lg overflow-hidden flex-shrink-0">
                           <img 
                             src={favorite.recipe?.coverImage || favorite.article?.coverImage || 'https://picsum.photos/seed/default/400/200'} 
@@ -846,9 +985,85 @@ const MyPage = () => {
                 </button>
               </div>
             )}
+            
+            {/* 留言列表 */}
+            {activeTab === 'comments' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">我的留言</h3>
+                
+                {/* 留言输入框 */}
+                <div className="mb-6">
+                  <textarea 
+                    className="w-full min-h-[120px] px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none transition-colors"
+                    placeholder="留下你的留言..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                  ></textarea>
+                  <div className="mt-3 flex justify-end">
+                    <button 
+                      onClick={handleCommentSubmit}
+                      disabled={isCommenting || !commentText.trim()}
+                      className="px-5 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isCommenting ? '提交中...' : '发表留言'}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* 留言列表 */}
+                <div>
+                  {contentLoading ? (
+                    <div className="flex justify-center py-10">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-orange-500 border-solid"></div>
+                    </div>
+                  ) : comments.length > 0 ? (
+                                      comments.map((comment) => (
+                                        <div key={comment.id} className="flex gap-4 py-6 border-b border-gray-200 dark:border-gray-700">
+                                          <div className="flex flex-row justify-between">
+                                              <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden">
+                                            <img 
+                                              src={comment.user.avatar} 
+                                              alt={comment.user.nickname}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                          </div>
+                                          
+                                          <div className="flex-1">
+                                              <div className="flex justify-between">
+                                                  <div className="flex justify-start gap-2 items-center">
+                                                      <h5 className="font-medium text-gray-900 dark:text-gray-100">{comment.user.nickname}</h5>
+                                                      <span className="text-gray-500 dark:text-gray-400">{formatTime(comment.createdAt)}</span>
+                                                  </div>
+                                                  <div>
+                                                      <button 
+                                                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-600 transition-colors"
+                                                          onClick={() => handleDeleteComment(comment.id)}
+                                                      >
+                                                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                          </svg>
+                                                          <span>删除</span>
+                                                      </button>
+                                                  </div>
+                                              </div>
+                                            <p className="mt-2 text-gray-700 dark:text-gray-300">
+                                              {comment.content}
+                                            </p>
+                                            
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div className="text-center py-10">
+                                        <p className="text-gray-500 dark:text-gray-400">暂无留言，快来成为第一个留言的人吧！</p>
+                                      </div>
+                                    )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        
 
       </div>
     </div>

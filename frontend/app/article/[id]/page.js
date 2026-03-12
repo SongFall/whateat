@@ -3,8 +3,9 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { formatRelativeTime } from "@/app/utils/timeUtils";
 import { Heart, MessageSquare, Share2, Copy, Twitter, Facebook, BookmarkPlus, Clock, Calendar, ArrowLeft } from "lucide-react";
-import { getArticleById } from "@/app/services/articles/articlesApi";
+import { getArticleById, collectArticle, uncollectArticle, checkArticleCollectionStatus, commentArticle, likeArticle, unlikeArticle } from "@/app/services/articles/articlesApi";
 
 // 美食博客文章详情组件
 const FoodBlogArticle = () => {
@@ -18,6 +19,12 @@ const FoodBlogArticle = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [commentContent, setCommentContent] = useState('');
+  const [replyContent, setReplyContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentError, setCommentError] = useState(null);
 
   // Mock数据
   const mockArticle = {
@@ -54,6 +61,27 @@ const FoodBlogArticle = () => {
     tags: ["南瓜食谱", "烘焙", "秋季美食", "早餐"]
   };
 
+  // 获取评论列表
+  const fetchComments = async () => {
+    try {
+      setCommentLoading(true);
+      setCommentError(null);
+      // 这里需要调用后端API获取评论列表
+      // 假设后端提供了获取评论的接口
+      // const response = await apiClient.get(`/articles/${id}/comments`);
+      // setComments(response.data || []);
+      // 暂时使用mock数据
+      if (article?.comments) {
+        setComments(article.comments);
+      }
+    } catch (err) {
+      console.error('获取评论失败:', err);
+      setCommentError('获取评论失败');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
   // 获取文章数据
   useEffect(() => {
     const loadArticle = async () => {
@@ -63,6 +91,19 @@ const FoodBlogArticle = () => {
         const articleData = await getArticleById(id);
         setArticle(articleData);
         setLikeCount(articleData.likes?.length || 0);
+        
+        // 检查收藏状态
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        if (token && userId) {
+          try {
+            const isCollected = await checkArticleCollectionStatus(id, parseInt(userId));
+            console.log('收藏状态:', isCollected);
+            setIsSaved(isCollected);
+          } catch (error) {
+            console.error('检查收藏状态失败:', error);
+          }
+        }
       } catch (err) {
         console.error("获取文章失败:", err);
         setError("获取文章失败，显示默认内容");
@@ -76,15 +117,195 @@ const FoodBlogArticle = () => {
     loadArticle();
   }, [id]);
 
+  // 获取评论列表
+  useEffect(() => {
+    if (article) {
+      fetchComments();
+    }
+  }, [article]);
+
   // 处理点赞
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+  const handleLike = async () => {
+    // 检查用户是否已登录
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    
+    if (!token || !userId) {
+      // 未登录，提示用户
+      alert('请先登录后再点赞');
+      return;
+    }
+    
+    try {
+      if (isLiked) {
+        // 取消点赞
+        await unlikeArticle(id, parseInt(userId));
+      } else {
+        // 点赞
+        await likeArticle(id, parseInt(userId));
+      }
+      // 更新本地状态
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+    } catch (error) {
+      console.error('点赞操作失败:', error);
+      alert('点赞操作失败，请重试');
+    }
+  };
+
+  // 处理发表评论
+  const handleSubmitComment = async () => {
+    // 检查用户是否已登录
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    
+    if (!token || !userId) {
+      // 未登录，提示用户
+      alert('请先登录后再评论');
+      return;
+    }
+    
+    if (!commentContent.trim()) {
+      alert('评论内容不能为空');
+      return;
+    }
+    
+    try {
+      setCommentLoading(true);
+      // 调用后端API发表评论
+      const newComment = await commentArticle(id, {
+        content: commentContent,
+        parentId: null
+      });
+      
+      // 更新评论列表
+      setComments(prev => [newComment, ...prev]);
+      // 清空评论输入框
+      setCommentContent('');
+    } catch (error) {
+      console.error('发表评论失败:', error);
+      alert('发表评论失败，请重试');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // 处理回复评论
+  const handleSubmitReply = async (parentId) => {
+    // 检查用户是否已登录
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    
+    if (!token || !userId) {
+      // 未登录，提示用户
+      alert('请先登录后再回复');
+      return;
+    }
+    
+    if (!replyContent.trim()) {
+      alert('回复内容不能为空');
+      return;
+    }
+    
+    try {
+      setCommentLoading(true);
+      // 调用后端API发表回复
+      const newReply = await commentArticle(id, {
+        content: replyContent,
+        parentId: parentId
+      });
+      
+      // 更新评论列表
+      setComments(prev => prev.map(comment => {
+        if (comment.id === parentId) {
+          return {
+            ...comment,
+            replies: [...(comment.replies || []), newReply]
+          };
+        }
+        return comment;
+      }));
+      
+      // 清空回复输入框
+      setReplyContent('');
+      setReplyingTo(null);
+    } catch (error) {
+      console.error('发表回复失败:', error);
+      alert('发表回复失败，请重试');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // 处理删除评论
+  const handleDeleteComment = async (commentId) => {
+    // 检查用户是否已登录
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    
+    if (!token || !userId) {
+      // 未登录，提示用户
+      alert('请先登录后再删除评论');
+      return;
+    }
+    
+    if (!confirm('确定要删除这条评论吗？')) {
+      return;
+    }
+    
+    try {
+      setCommentLoading(true);
+      // 调用后端API删除评论
+      await fetch(`http://localhost:3001/articles/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // 更新评论列表
+      setComments(prev => prev.filter(comment => comment.id !== commentId));
+    } catch (error) {
+      console.error('删除评论失败:', error);
+      alert('删除评论失败，请重试');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  // 处理开始回复
+  const handleStartReply = (commentId) => {
+    setReplyingTo(commentId);
+    setReplyContent('');
   };
 
   // 处理收藏
-  const handleSave = () => {
-    setIsSaved(!isSaved);
+  const handleSave = async () => {
+    // 检查用户是否已登录
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
+    
+    if (!token || !userId) {
+      // 未登录，提示用户
+      alert('请先登录后再收藏');
+      return;
+    }
+    
+    try {
+      if (isSaved) {
+        // 取消收藏
+        await uncollectArticle(id, parseInt(userId));
+      } else {
+        // 收藏文章
+        await collectArticle(id, parseInt(userId));
+      }
+      // 更新本地状态
+      setIsSaved(!isSaved);
+    } catch (error) {
+      console.error('收藏操作失败:', error);
+      alert('收藏操作失败，请重试');
+    }
   };
 
   // 处理复制链接
@@ -127,7 +348,7 @@ const FoodBlogArticle = () => {
           {/* 作者信息 */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div className="flex items-center gap-x-4">
-              <div className="relative shrink-0 w-12 h-12 rounded-full overflow-hidden ring-2 ring-orange-500/20">
+              <Link href={`/my/${article.user.id || 1}`} className="relative shrink-0 w-12 h-12 rounded-full overflow-hidden ring-2 ring-orange-500/20 hover:ring-orange-500 transition-colors">
                 <Image 
                   src={article.authorAvatar || "https://picsum.photos/seed/chef/200/200"} 
                   alt="作者头像"
@@ -135,11 +356,11 @@ const FoodBlogArticle = () => {
                   sizes="48x48"
                   className="object-cover"
                 />
-              </div>
+              </Link>
               
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{article.author}</h3>
+                  <Link href={`/my/${article.authorId || 1}`} className="font-semibold text-gray-900 dark:text-gray-100 hover:text-orange-500 transition-colors">{article.author}</Link>
                   <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 rounded-full">美食专栏作家</span>
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -160,7 +381,7 @@ const FoodBlogArticle = () => {
               className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
             >
               <BookmarkPlus className={`w-4 h-4 ${isSaved ? 'fill-orange-500 text-orange-500' : ''}`} />
-              <span>{isSaved ? '已收藏' : '收藏食谱'}</span>
+              <span>{isSaved ? '已收藏' : '收藏文章'}</span>
             </button>
           </div>
 
@@ -238,50 +459,183 @@ const FoodBlogArticle = () => {
               <textarea 
                 className="w-full min-h-[120px] px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none transition-colors"
                 placeholder="你尝试过这个食谱吗？有什么心得体会？"
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
               ></textarea>
               <div className="mt-3 flex justify-end">
-                <button className="px-5 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors">
-                  发表评论
+                <button 
+                  onClick={handleSubmitComment}
+                  disabled={commentLoading}
+                  className="px-5 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {commentLoading ? '发表中...' : '发表评论'}
                 </button>
               </div>
             </div>
 
             {/* 精选评论 */}
             <div className="space-y-6">
-              <h4 className="font-medium text-gray-900 dark:text-gray-100">精选评论 ({article.comments?.length || 0})</h4>
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">精选评论 ({comments.length || 0})</h4>
               
-              {article.comments?.map((comment) => (
-                <div key={comment.id} className="flex gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
-                  <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden">
-                    <Image 
-                      src={comment.avatar || `https://picsum.photos/seed/user${comment.userId}/100/100`} 
-                      alt="用户头像"
-                      fill
-                      sizes="40x40"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center">
-                      <h5 className="font-medium text-gray-900 dark:text-gray-100">{comment.username}</h5>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">{comment.createdAt || "3天前"}</span>
-                    </div>
-                    <p className="mt-2 text-gray-700 dark:text-gray-300">
-                      {comment.content}
-                    </p>
-                    <div className="mt-3 flex items-center gap-4">
-                      <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors">
-                        <Heart className="w-4 h-4" />
-                        <span>{comment.likes || 0}</span>
-                      </button>
-                      <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                        <MessageSquare className="w-4 h-4" />
-                        <span>回复</span>
-                      </button>
-                    </div>
-                  </div>
+              {commentLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                 </div>
-              ))}
+              ) : commentError ? (
+                <div className="text-center text-red-500 py-8">
+                  {commentError}
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  暂无评论，快来发表第一条评论吧！
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden">
+                      <Image 
+                        src={comment.user.avatar} 
+                        alt="用户头像"
+                        fill
+                        sizes="40x40"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-medium text-gray-900 dark:text-gray-100">{comment.user.username || comment.author}</h5>
+                          {/* 作者标签 */}
+                          {article?.userId === comment.userId && (
+                            <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 rounded-full">作者</span>
+                          )}
+                          {/* 本人标签 */}
+                          {localStorage.getItem('userId') == comment.userId && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded-full">我</span>
+                          )}
+                          {/* 粉丝标签 - 这里需要后端提供关注关系，暂时注释 */}
+                          {/* {comment.isFollowingAuthor && (
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full">粉丝</span>
+                          )} */}
+                        </div>
+                      </div>
+                      <p className="mt-2 text-gray-700 dark:text-gray-300">
+                        {comment.content}
+                      </p>
+                      <div className="mt-3 flex items-center gap-4">
+                        <button className="flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors">
+                          <Heart className="w-4 h-4" />
+                          <span>{comment.likes || 0}</span>
+                        </button>
+                        <button 
+                          onClick={() => handleStartReply(comment.id)}
+                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span>回复</span>
+                        </button>
+                        {/* 删除按钮 - 评论作者或文章作者可以删除 */}
+                        {localStorage.getItem('userId') && (localStorage.getItem('userId') == comment.userId || localStorage.getItem('userId') == article?.userId) && (
+                          <button 
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <span>删除</span>
+                          </button>
+                        )}
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{formatRelativeTime(comment.createdAt || "3天前")}</span>
+                      </div>
+                      
+                      {/* 回复输入框 */}
+                      {replyingTo === comment.id && (
+                        <div className="mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+                          <textarea 
+                            className="w-full min-h-[80px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none transition-colors"
+                            placeholder="写下你的回复..."
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                          ></textarea>
+                          <div className="mt-2 flex justify-end gap-2">
+                            <button 
+                              onClick={() => setReplyingTo(null)}
+                              className="px-4 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              取消
+                            </button>
+                            <button 
+                              onClick={() => handleSubmitReply(comment.id)}
+                              disabled={commentLoading}
+                              className="px-4 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {commentLoading ? '回复中...' : '回复'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* 回复列表 */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="mt-4 space-y-4 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                          {comment.replies.map((reply) => (
+                            <div key={reply.id} className="flex gap-3">
+                              <div className="relative shrink-0 w-8 h-8 rounded-full overflow-hidden">
+                                <Image 
+                                  src={reply.user.avatar} 
+                                  alt="用户头像"
+                                  fill
+                                  sizes="32x32"
+                                  className="object-cover"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center gap-2">
+                                    <h6 className="font-medium text-gray-900 dark:text-gray-100 text-sm">{reply.username || reply.author}</h6>
+                                    {/* 作者标签 */}
+                                    {article?.userId === reply.userId && (
+                                      <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 rounded-full">作者</span>
+                                    )}
+                                    {/* 本人标签 */}
+                                    {localStorage.getItem('userId') == reply.userId && (
+                                      <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded-full">本人</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="mt-1 text-gray-700 dark:text-gray-300 text-sm">
+                                  {reply.content}
+                                </p>
+                                <div className="mt-2 flex items-center gap-3">
+                                  <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-orange-600 transition-colors">
+                                    <Heart className="w-3 h-3" />
+                                    <span>{reply.likes || 0}</span>
+                                  </button>
+                                  <button 
+                                    onClick={() => handleStartReply(reply.id)}
+                                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                                  >
+                                    <MessageSquare className="w-3 h-3" />
+                                    <span>回复</span>
+                                  </button>
+                                  {/* 删除按钮 - 回复作者或文章作者可以删除 */}
+                                  {localStorage.getItem('userId') && (localStorage.getItem('userId') == reply.userId || localStorage.getItem('userId') == article?.userId) && (
+                                    <button 
+                                      onClick={() => handleDeleteComment(reply.id)}
+                                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                                    >
+                                      <span>删除</span>
+                                    </button>
+                                  )}
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">{formatRelativeTime(reply.createdAt || "2天前")}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

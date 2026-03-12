@@ -194,13 +194,15 @@ class ApiClient {
   /**
    * DELETE请求
    * @param {string} url - 请求URL
-   * @param {Object} options - 请求选项
+   * @param {Object} data - 请求数据
+   * @param {Object} options - 其他请求选项
    * @returns {Promise<any>} - 请求结果
    */
-  async delete(url, options = {}) {
+  async delete(url, data = {}, options = {}) {
     return this.request(url, {
       ...options,
       method: 'DELETE',
+      body: JSON.stringify(data),
     });
   }
 
