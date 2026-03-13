@@ -81,7 +81,7 @@ export class UserContentController {
   @Post(':id/follow')
   async followUser(@Param('id') id: string, @Request() req) {
     try {
-      const followerId = req.user?.userId;
+      const followerId = req.user?.id;
       if (!followerId) {
         throw new HttpException(
           {
@@ -112,7 +112,7 @@ export class UserContentController {
   @Post(':id/unfollow')
   async unfollowUser(@Param('id') id: string, @Request() req) {
     try {
-      const followerId = req.user?.userId;
+      const followerId = req.user?.id;
       if (!followerId) {
         throw new HttpException(
           {
@@ -143,7 +143,7 @@ export class UserContentController {
   @Post(':id/like')
   async likeUser(@Param('id') id: string, @Request() req) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         throw new HttpException(
           {
@@ -174,7 +174,7 @@ export class UserContentController {
   @Post(':id/unlike')
   async unlikeUser(@Param('id') id: string, @Request() req) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         throw new HttpException(
           {
@@ -225,7 +225,7 @@ export class UserContentController {
   @Post(':id/comments')
   async createUserComment(@Param('id') id: string, @Body() body: { content: string, parentId?: number }, @Request() req) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         throw new HttpException(
           {
@@ -260,7 +260,7 @@ export class UserContentController {
   @Delete('comments/:id')
   async deleteUserComment(@Param('id') id: string, @Request() req) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         throw new HttpException(
           {
