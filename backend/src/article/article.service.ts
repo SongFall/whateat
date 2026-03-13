@@ -225,9 +225,26 @@ export class ArticleService {
     });
   }
 
-  remove(id: number) {
+  async remove(id: number, userId: number) {
+    // Delete related records first to avoid foreign key constraint
+    await this.prisma.comment.deleteMany({
+      where: { articleId: id },
+    });
+    
+    await this.prisma.like.deleteMany({
+      where: { articleId: id },
+    });
+    
+    await this.prisma.collection.deleteMany({
+      where: { articleId: id },
+    });
+    
+    // Now delete the article
     return this.prisma.article.delete({
-      where: { id },
+      where: {
+        id,
+        userId,
+      },
     });
   }
 

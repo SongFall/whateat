@@ -322,7 +322,7 @@ export class UserService {
 
     // 生成 JWT token
     const token = this.jwtService.sign({
-      userId: user.id,
+      id: user.id,
       email: user.email,
       role: user.role,
     });

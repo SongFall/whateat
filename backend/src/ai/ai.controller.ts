@@ -12,11 +12,11 @@ export class AiController {
   @Post('generate-recipe')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async generateRecipe(@Body() createAiRecipeDto: CreateAiRecipeDto, @GetCurrentUser() user: { userId: number }) {
+  async generateRecipe(@Body() createAiRecipeDto: CreateAiRecipeDto, @GetCurrentUser() user: { id: number }) {
   // async generateRecipe(@Body() createAiRecipeDto: CreateAiRecipeDto) {
     const { ingredients, imageUrls, taste, cuisine, cookingMethod, difficulty, servings, cookingTime, dietaryRestrictions } = createAiRecipeDto;
     const recipeId = await this.aiService.generateRecipe(
-      user.userId,
+      user.id,
       ingredients,
       imageUrls,
       taste,
@@ -33,10 +33,10 @@ export class AiController {
   @Post('generate-article')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async generateArticle(@Body() createAiArticleDto: CreateAiArticleDto, @GetCurrentUser() user: { userId: number }) {
+  async generateArticle(@Body() createAiArticleDto: CreateAiArticleDto, @GetCurrentUser() user: { id: number }) {
     const { style, theme, summary } = createAiArticleDto;
     const articleId = await this.aiService.generateArticle(
-      user.userId,
+      user.id,
       style,
       theme,
       summary,

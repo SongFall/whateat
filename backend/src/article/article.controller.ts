@@ -50,21 +50,22 @@ export class ArticleController {
     return this.articleService.update(+id, updateArticleDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.articleService.remove(+id);
+  remove(@Param('id') id: string, @GetCurrentUser() user: { id: number }) {
+    return this.articleService.remove(+id, user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/like')
-  like(@Param('id') id: string, @GetCurrentUser() user: { userId: number }) {
-    return this.articleService.like(+id, user.userId);
+  like(@Param('id') id: string, @GetCurrentUser() user: { id: number }) {
+    return this.articleService.like(+id, user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id/like')
-  unlike(@Param('id') id: string, @GetCurrentUser() user: { userId: number }) {
-    return this.articleService.unlike(+id, user.userId);
+  unlike(@Param('id') id: string, @GetCurrentUser() user: { id: number }) {
+    return this.articleService.unlike(+id, user.id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -72,11 +73,11 @@ export class ArticleController {
   comment(
     @Param('id') id: string,
     @Body() body: CreateCommentDto,
-    @GetCurrentUser() user: { userId: number },
+    @GetCurrentUser() user: { id: number },
   ) {
     return this.articleService.comment(
       +id,
-      user.userId,
+      user.id,
       body.content,
       body.parentId,
     );
@@ -87,11 +88,11 @@ export class ArticleController {
   updateComment(
     @Param('commentId') commentId: string,
     @Body() body: UpdateCommentDto,
-    @GetCurrentUser() user: { userId: number },
+    @GetCurrentUser() user: { id: number },
   ) {
     return this.articleService.updateComment(
       +commentId,
-      user.userId,
+      user.id,
       body.content,
     );
   }
@@ -100,11 +101,11 @@ export class ArticleController {
   @Delete('comments/:commentId')
   deleteComment(
     @Param('commentId') commentId: string,
-    @GetCurrentUser() user: { userId: number },
+    @GetCurrentUser() user: { id: number },
   ) {
     return this.articleService.deleteComment(
       +commentId,
-      user.userId,
+      user.id,
     );
   }
 
