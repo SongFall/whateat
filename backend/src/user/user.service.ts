@@ -260,14 +260,24 @@ export class UserService {
 
   async update(id: number, updateUserDto: UpdateUserDto) {
     try {
+      // 创建更新数据对象，过滤掉空值
+      const updateData: any = {};
+      
+      // 遍历所有字段，只包含非空值
+      for (const [key, value] of Object.entries(updateUserDto)) {
+        if (value !== undefined && value !== null && value !== '') {
+          updateData[key] = value;
+        }
+      }
+      
       // 如果更新密码，需要重新哈希
-      if (updateUserDto.password) {
-        updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+      if (updateData.password) {
+        updateData.password = await bcrypt.hash(updateData.password, 10);
       }
 
       return await this.prisma.user.update({
         where: { id },
-        data: updateUserDto,
+        data: updateData,
       });
     } catch (error) {
       if (error.code === 'P2025') {

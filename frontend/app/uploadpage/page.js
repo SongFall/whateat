@@ -3,6 +3,7 @@
 import ImageUploader from "@/components/uploader/uploader";
 import { useState, useEffect } from "react";
 import apiClient from "@/app/request/apiClient";
+import { isLoggedIn } from "@/app/services/users/usersApi";
 
 export default function CookingPage() {
   // 添加lottie脚本
@@ -54,6 +55,10 @@ export default function CookingPage() {
     setRecipeImages(prev => [...prev, imageInfo]);
   };
 
+  const handleImageDelete = (imageId) => {
+    setRecipeImages(prev => prev.filter(img => img.id !== imageId));
+  };
+
 
 
   const handleChange = (e) => {
@@ -63,6 +68,14 @@ export default function CookingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 检查用户是否已登录
+    if (!isLoggedIn()) {
+      alert("请先登录后再生成食谱");
+      window.location.href = "/auth";
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
@@ -149,7 +162,7 @@ export default function CookingPage() {
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">上传美食参考图片</h2>
               <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-amber-300 transition-colors duration-300">
-                <ImageUploader onUploadComplete={handleImageUpload} />
+                <ImageUploader onUploadComplete={handleImageUpload} onDeleteImage={handleImageDelete} />
               </div>
             </div>
 

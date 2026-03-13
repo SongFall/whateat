@@ -32,3 +32,15 @@ function getMockGeneratedRecipe() {
     tips: ['这是示例提示', '仅供参考'],
   };
 }
+
+/**
+ * 生成AI文章
+ */
+export async function generateArticle(articleData) {
+  try {
+    return await apiClient.post('/ai/generate-article', articleData);
+  } catch (error) {
+    console.error('生成文章失败:', error);
+    throw error;
+  }
+}

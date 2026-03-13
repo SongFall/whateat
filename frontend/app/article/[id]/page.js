@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatRelativeTime } from "@/app/utils/timeUtils";
 import { Heart, MessageSquare, Share2, Copy, Twitter, Facebook, BookmarkPlus, Clock, Calendar, ArrowLeft } from "lucide-react";
-import { getArticleById, collectArticle, uncollectArticle, checkArticleCollectionStatus, commentArticle, likeArticle, unlikeArticle } from "@/app/services/articles/articlesApi";
+import { getArticleById, collectArticle, uncollectArticle, checkArticleCollectionStatus, commentArticle, likeArticle, unlikeArticle, getRecommendedArticles } from "@/app/services/articles/articlesApi";
 
 // 美食博客文章详情组件
 const FoodBlogArticle = () => {
@@ -25,6 +25,8 @@ const FoodBlogArticle = () => {
   const [comments, setComments] = useState([]);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState(null);
+  const [recommendedArticles, setRecommendedArticles] = useState([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   // Mock数据
   const mockArticle = {
@@ -123,6 +125,25 @@ const FoodBlogArticle = () => {
       fetchComments();
     }
   }, [article]);
+
+  // 获取推荐文章
+  useEffect(() => {
+    const fetchRecommendedArticles = async () => {
+      try {
+        setRecommendedLoading(true);
+        const articles = await getRecommendedArticles(3);
+        // 过滤掉当前文章
+        const filteredArticles = articles.filter(item => item.id != id);
+        setRecommendedArticles(filteredArticles);
+      } catch (error) {
+        console.error('获取推荐文章失败:', error);
+      } finally {
+        setRecommendedLoading(false);
+      }
+    };
+
+    fetchRecommendedArticles();
+  }, [id]);
 
   // 处理点赞
   const handleLike = async () => {
@@ -244,12 +265,7 @@ const FoodBlogArticle = () => {
     const userId = localStorage.getItem('userId');
     
     if (!token || !userId) {
-      // 未登录，提示用户
-      alert('请先登录后再删除评论');
-      return;
-    }
-    
-    if (!confirm('确定要删除这条评论吗？')) {
+      // 未登录，直接返回
       return;
     }
     
@@ -268,7 +284,6 @@ const FoodBlogArticle = () => {
       setComments(prev => prev.filter(comment => comment.id !== commentId));
     } catch (error) {
       console.error('删除评论失败:', error);
-      alert('删除评论失败，请重试');
     } finally {
       setCommentLoading(false);
     }
@@ -348,7 +363,7 @@ const FoodBlogArticle = () => {
           {/* 作者信息 */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div className="flex items-center gap-x-4">
-              <Link href={`/my/${article.user.id || 1}`} className="relative shrink-0 w-12 h-12 rounded-full overflow-hidden ring-2 ring-orange-500/20 hover:ring-orange-500 transition-colors">
+              <Link href={localStorage.getItem('userId') == (article.user?.id || article.authorId || 1) ? "/my" : `/my/${article.user?.id || article.authorId || 1}`} className="relative shrink-0 w-12 h-12 rounded-full overflow-hidden ring-2 ring-orange-500/20 hover:ring-orange-500 transition-colors">
                 <Image 
                   src={article.authorAvatar || "https://picsum.photos/seed/chef/200/200"} 
                   alt="作者头像"
@@ -360,7 +375,7 @@ const FoodBlogArticle = () => {
               
               <div>
                 <div className="flex items-center gap-2">
-                  <Link href={`/my/${article.authorId || 1}`} className="font-semibold text-gray-900 dark:text-gray-100 hover:text-orange-500 transition-colors">{article.author}</Link>
+                  <Link href={localStorage.getItem('userId') == (article.user?.id || article.authorId || 1) ? "/my" : `/my/${article.user?.id || article.authorId || 1}`} className="font-semibold text-gray-900 dark:text-gray-100 hover:text-orange-500 transition-colors">{article.author}</Link>
                   <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100 rounded-full">美食专栏作家</span>
                 </div>
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -646,77 +661,43 @@ const FoodBlogArticle = () => {
         <div className="max-w-4xl px-4 sm:px-6 lg:px-8 mx-auto">
           <h3 className="text-2xl font-bold mb-8 text-center">你可能也喜欢</h3>
           
-          <div className="grid sm:grid-cols-3 gap-6">
-            {/* 推荐文章1 */}
-            <Link 
-              href="/blog/recipe/apple-pie" 
-              className="group bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="relative aspect-[4/3]">
-                <Image 
-                  src="https://picsum.photos/seed/applepie/600/450" 
-                  alt="传统苹果派"
-                  fill
-                  sizes="(max-width: 640px) 100vw, 300px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                  经典苹果派：秋季的甜蜜滋味
-                </h4>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  这款苹果派外酥内软，苹果的酸甜与肉桂的香气完美融合，是秋季不可错过的甜点。
-                </p>
-              </div>
-            </Link>
-            
-            {/* 推荐文章2 */}
-            <Link 
-              href="/blog/recipe/sweet-potato-soup" 
-              className="group bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="relative aspect-[4/3]">
-                <Image 
-                  src="https://picsum.photos/seed/sweetpotatosoup/600/450" 
-                  alt="甜薯汤"
-                  fill
-                  sizes="(max-width: 640px) 100vw, 300px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                  奶油甜薯汤：温暖你的秋日
-                </h4>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  丝滑浓郁的甜薯汤，带有淡淡的香料味，寒冷的日子里喝上一碗，暖心又暖胃。
-                </p>
-              </div>
-            </Link>
-            <Link 
-              href="/blog/recipe/sweet-potato-soup" 
-              className="group bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="relative aspect-[4/3]">
-                <Image 
-                  src="https://picsum.photos/seed/sweetpotatosoup/600/450" 
-                  alt="甜薯汤"
-                  fill
-                  sizes="(max-width: 640px) 100vw, 300px"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                  奶油甜薯汤：温暖你的秋日
-                </h4>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                  丝滑浓郁的甜薯汤，带有淡淡的香料味，寒冷的日子里喝上一碗，暖心又暖胃。
-                </p>
-              </div>
-            </Link>
-          </div>
+          {recommendedLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+            </div>
+          ) : recommendedArticles.length > 0 ? (
+            <div className="grid sm:grid-cols-3 gap-6">
+              {recommendedArticles.map((article) => (
+                <Link 
+                  key={article.id}
+                  href={`/article/${article.id}`} 
+                  className="group bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="relative aspect-[4/3]">
+                    <Image 
+                      src={article.coverImage || `https://picsum.photos/seed/article${article.id}/600/450`} 
+                      alt={article.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 300px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors line-clamp-2">
+                      {article.title}
+                    </h4>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {article.excerpt || article.content?.substring(0, 100) + '...'}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500">暂无推荐文章</p>
+            </div>
+          )}
         </div>
       </div>
 

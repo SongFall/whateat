@@ -35,6 +35,11 @@ export class ArticleController {
     return this.articleService.findPopular(limit ? Number(limit) : 5);
   }
 
+  @Get('recommended')
+  findRecommended(@Query('limit') limit: string) {
+    return this.articleService.findRecommended(limit ? Number(limit) : 3);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.articleService.findOne(+id);

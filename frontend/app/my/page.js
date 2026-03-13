@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import apiClient from "../request/apiClient";
 import { getUserProfile, uploadUserAvatar, updateUser, getUserArticles, getUserRecipes, getUserCollections, getUserComments, createUserComment, deleteUserComment, getFollowingCount, getFollowersCount } from "../services/users/usersApi";
+import { updateArticle, deleteArticle } from "../services/articles/articlesApi";
 import { formatTime } from "../utils/timeUtils";
 import FollowModal from "../../components/modal/FollowModal";
 
@@ -126,9 +127,10 @@ const MyPage = () => {
       ]);
 
       console.log('articlesData:', articlesData);
+      console.log('recipesData:', recipesData);
       
       setArticles(articlesData.data);
-      setRecipes(recipesData);
+      setRecipes(recipesData.data || []);
       setFavorites(favoritesData);
       setComments(commentsData);
       setFollowingCount(following);
@@ -205,6 +207,19 @@ const MyPage = () => {
       setComments(prev => (Array.isArray(prev) ? prev.filter(comment => comment.id !== commentId) : []));
     } catch (err) {
       console.error("Failed to delete comment:", err);
+    }
+  };
+
+  // 处理文章删除
+  const handleDeleteArticle = async (articleId) => {
+    try {
+      // 调用API删除文章
+      await deleteArticle(articleId);
+      // 成功后更新文章列表，过滤掉被删除的文章
+      setArticles(prev => (Array.isArray(prev) ? prev.filter(article => article.id !== articleId) : []));
+    } catch (err) {
+      console.error("Failed to delete article:", err);
+      alert('删除文章失败，请稍后重试');
     }
   };
 
@@ -700,7 +715,7 @@ const MyPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 
-                <a href="/article/add" className="w-10 h-10 rounded-full bg-orange-100 dark:bg-blue-900/30 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800/30 transition-colors">
+                <a href="/article/add" className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center hover:bg-orange-200 dark:hover:bg-orange-800/30 transition-colors">
                   <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
@@ -716,11 +731,11 @@ const MyPage = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">我的食谱</p>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{recipes.length || '0'}</h3>
               </div>
-              <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
+              <a href="/uploadpage" className="hover:bg-pink-200 dark:hover:bg-pink-800/30 w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
                 <svg className="h-5 w-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
-              </div>
+              </a>
             </div>
           </div>
           
@@ -761,7 +776,7 @@ const MyPage = () => {
           <div className="border-b border-gray-200 dark:border-gray-700">
             <div className="flex overflow-x-auto">
               {[
-                { id: 'articles', label: '我的文章', icon: '➕' },
+                { id: 'articles', label: '我的文章', icon: '📝' },
                 { id: 'recipes', label: '我的食谱', icon: '🍳' },
                 { id: 'favorites', label: '我的收藏', icon: '❤️' },
                 { id: 'comments', label: '我的留言', icon: '💬' }
@@ -799,25 +814,27 @@ const MyPage = () => {
                     </div>
                   ) : articles.length > 0 ? (
                     articles.map((article) => (
-                      <div key={article.id} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors" onClick={() => window.open(`/article/${article.id}`, '_blank')}>
-                        <div className="w-full md:w-40 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                      <div key={article.id} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                        <div className="w-full md:w-40 h-24 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer" onClick={() => window.open(`/article/${article.id}`, '_blank')}>
                           <img 
                             src={article.coverImage} 
                             alt={article.title} 
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-base font-medium text-gray-900 dark:text-white hover:text-orange-500 dark:hover:text-orange-400 transition-colors">
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between">
+                            <h4 className="text-base font-medium text-gray-900 dark:text-white hover:text-orange-500 dark:hover:text-orange-400 transition-colors cursor-pointer" onClick={() => window.open(`/article/${article.id}`, '_blank')}>
                               {article.title}
                             </h4>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(article.createdAt).toLocaleDateString("zh-CN")}</span>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1 cursor-pointer" onClick={() => window.open(`/article/${article.id}`, '_blank')}>
                             {article.excerpt}
                           </p>
-                          <div className="flex items-center gap-4 mt-2">
+                          </div>
+                          <div className="flex justify-between">
+                          <div className="flex items-center gap-4">
                             <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd"></path>
@@ -837,6 +854,39 @@ const MyPage = () => {
                               {article.shareCount || 0}
                             </span>
                           </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(article.createdAt).toLocaleDateString("zh-CN")}</span>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  className="text-xs text-gray-500 hover:text-blue-500 transition-colors flex items-center gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(`/article/edit/${article.id}`, '_blank');
+                                  }}
+                                >
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                  编辑
+                                </button>
+                                <button 
+                                  className="text-xs text-gray-500 hover:text-red-500 transition-colors flex items-center gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm('确定要删除这篇文章吗？')) {
+                                      handleDeleteArticle(article.id);
+                                    }
+                                  }}
+                                >
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  删除
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        
                         </div>
                       </div>
                     ))

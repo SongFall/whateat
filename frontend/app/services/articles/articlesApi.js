@@ -199,6 +199,21 @@ export const getPopularArticles = async (limit = 5) => {
 };
 
 /**
+ * 获取推荐文章
+ * @param {number} [limit=3] - 返回数量
+ * @returns {Promise<Array>} 推荐文章列表
+ */
+export const getRecommendedArticles = async (limit = 3) => {
+  try {
+    const response = await apiClient.get('/articles/recommended', { limit });
+    return response.data || response;
+  } catch (error) {
+    console.error('获取推荐文章失败:', error);
+    throw error;
+  }
+};
+
+/**
  * 获取用户创建的文章
  * @param {number} userId - 用户ID
  * @param {Object} [params] - 查询参数

@@ -4,7 +4,7 @@ import { useState } from "react";
 import apiClient from "@/app/request/apiClient";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function ImageUploader({ onUploadComplete }) {
+export default function ImageUploader({ onUploadComplete, onDeleteImage }) {
   const [images, setImages] = useState([]);
   const [error, setError] = useState(null);
 
@@ -80,11 +80,20 @@ export default function ImageUploader({ onUploadComplete }) {
     } catch (err) {
       setError('上传失败，请重试');
       setImages(prev => prev.filter(img => img.id !== imageItem.id));
+      // 调用删除回调
+      if (onDeleteImage) {
+        onDeleteImage(imageItem.id);
+      }
     }
   };
 
   const handleDeleteImage = (index) => {
+    const deletedImage = images[index];
     setImages(prev => prev.filter((_, i) => i !== index));
+    // 调用删除回调
+    if (onDeleteImage && deletedImage.url) {
+      onDeleteImage(deletedImage.id);
+    }
   };
 
   return (

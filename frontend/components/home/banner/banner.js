@@ -70,7 +70,7 @@ const Banner = () => {
       <CarouselContent>
         {articles.map((article, index) => (
           <CarouselItem key={article.id || index} className="w-full">
-            <div className="relative h-[400px] sm:h-[500px] md:h-[700px] w-full overflow-hidden rounded-2xl">
+            <div className="relative h-[400px] sm:h-[500px] md:h-[700px] w-full overflow-hidden rounded-2xl" onClick={() => window.open(`/article/${article.id}`, '_blank')}>
               <img
                 src={article.coverImage || article.imageUrl || "https://images.unsplash.com/photo-1467003909585-2f8a72700288?q=80&w=1920&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"}
                 alt={article.title}

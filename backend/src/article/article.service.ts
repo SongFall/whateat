@@ -172,6 +172,52 @@ export class ArticleService {
     }));
   }
 
+  async findRecommended(limit: number = 3) {
+    try {
+      console.log('开始获取推荐文章，limit:', limit);
+      // 确保limit是正整数
+      const validLimit = Math.max(1, Math.min(10, Number(limit) || 3));
+      console.log('有效limit:', validLimit);
+      
+      const articles = await this.prisma.article.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+              nickname: true,
+            },
+          },
+        },
+        // 综合排序：优先考虑浏览量，其次是创建时间
+        orderBy: [
+          { viewCount: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        take: validLimit,
+      });
+      
+      console.log('获取到文章数量:', articles.length);
+
+      // 处理文章数据，添加author字段和阅读时间
+      const result = articles.map((article) => ({
+        ...article,
+        author: article.user?.nickname || article.user?.username || '未知作者',
+        authorAvatar: article.user?.avatar,
+        createdAt: article.createdAt ? article.createdAt.toISOString().split('T')[0] : null,
+        publishDate: article.createdAt ? article.createdAt.toISOString().split('T')[0] : null,
+        readingTime: article.readingTime || 0,
+      }));
+      
+      console.log('处理完成，返回结果数量:', result.length);
+      return result;
+    } catch (error) {
+      console.error('获取推荐文章失败:', error);
+      throw error;
+    }
+  }
+
   update(id: number, updateArticleDto: UpdateArticleDto) {
     return this.prisma.article.update({
       where: { id },

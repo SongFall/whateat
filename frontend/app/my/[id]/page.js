@@ -398,7 +398,7 @@ const UserDetailPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">关注</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{user.followingCount || 32}</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{user.followingCount || 0}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                 <svg className="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,7 +413,7 @@ const UserDetailPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">粉丝</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{user.followerCount || 156}</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{user.followerCount || 0}</h3>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

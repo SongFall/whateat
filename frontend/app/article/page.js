@@ -6,6 +6,7 @@ import PopArticle from "../../components/article/poplist/PopList"
 
 const ArticlePage = () => {
   const [articles, setArticles] = useState([]);
+  const [popularArticles, setPopularArticles] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -24,14 +25,17 @@ const ArticlePage = () => {
         setError(null);
 
         // 获取热门文章数据
+        const popularArticlesData = await fetchPopularArticles();
         const response = await getAllArticles();
         // 检查response是否已经是数组（来自API服务的处理）
         const articlesData = Array.isArray(response) ? response : (response.data || []);
         const totalCount = response.count || 0;
         console.log('文章数据:', articlesData);
+        console.log('热门文章数据:', popularArticlesData);
         console.log('文章总数:', totalCount);
         setCount(totalCount);
         setArticles(articlesData);
+        setPopularArticles(popularArticlesData);
       } catch (err) {
         console.error("加载文章失败:", err);
         setError("加载文章失败，请稍后重试");
@@ -97,7 +101,7 @@ const ArticlePage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <PopArticle />
+      <PopArticle articles={popularArticles} />
 
       {/* 文章列表 */}
       <div className="mx-auto mb-12">

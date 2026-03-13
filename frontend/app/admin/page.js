@@ -6,6 +6,7 @@ import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { getAllUsers, createUser, updateUser, deleteUser } from '@/app/services/users/usersApi';
 import { getAllRecipes, createRecipe, updateRecipe, deleteRecipe } from '@/app/services/recipes/recipesApi';
 import { getAllArticles, createArticle, updateArticle, deleteArticle } from '@/app/services/articles/articlesApi';
+import { generateArticle } from '@/app/services/ai/aiApi';
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -21,6 +22,8 @@ const AdminPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   // 表单数据
   const [formData, setFormData] = useState({
@@ -101,28 +104,42 @@ const AdminPage = () => {
 
   // 打开新增模态框
   const handleAdd = () => {
+    if (activeTab === 'recipes') {
+      // 菜谱管理添加时跳转到uploadpage
+      window.location.href = '/uploadpage';
+      return;
+    }
+    
     setCurrentItem(null);
     setIsEditing(false);
     setFormData({
-      name: '',
+      username: '',
       email: '',
       password: '',
       role: 'user',
-      status: 'active'
+      style: '',
+      theme: '',
+      summary: ''
     });
     setIsModalOpen(true);
   };
 
   // 打开编辑模态框
   const handleEdit = (item) => {
+    // 对于文章，跳转到编辑页面
+    if (activeTab === 'articles' && item.id) {
+      window.location.href = `/article/edit/${item.id}`;
+      return;
+    }
+    
+    // 对于其他类型，使用模态框
     setCurrentItem(item);
     setIsEditing(true);
     setFormData({
-      name: item.name || '',
+      username: item.username || '',
       email: item.email || '',
       password: '',
-      role: item.role || 'user',
-      status: item.status || 'active'
+      role: item.role || 'user'
     });
     setIsModalOpen(true);
   };
@@ -155,10 +172,19 @@ const AdminPage = () => {
   // 处理表单提交
   const handleSubmit = async () => {
     try {
+      if (activeTab === 'articles' && !isEditing) {
+        setIsSubmitting(true);
+      }
+      
       if (isEditing) {
         // 编辑
         if (activeTab === 'users') {
-          await updateUser(currentItem.id, formData);
+          // 只在密码不为空时包含密码字段
+          const userData = { ...formData };
+          if (!userData.password) {
+            delete userData.password;
+          }
+          await updateUser(currentItem.id, userData);
           loadUsers();
         } else if (activeTab === 'recipes') {
           await updateRecipe(currentItem.id, formData);
@@ -176,14 +202,28 @@ const AdminPage = () => {
           await createRecipe(formData);
           loadRecipes();
         } else if (activeTab === 'articles') {
-          await createArticle(formData);
+          // 调用AI生成文章接口
+          const aiResponse = await generateArticle({
+            style: formData.style,
+            theme: formData.theme,
+            summary: formData.summary
+          });
+          console.log('AI生成文章成功:', aiResponse);
+          
+          // 后端已经完成了文章的创建，直接刷新文章列表
           loadArticles();
+          setSuccessMessage('文章生成成功！');
+          setTimeout(() => {
+            setSuccessMessage('');
+          }, 3000);
         }
       }
       setIsModalOpen(false);
     } catch (error) {
       console.error('保存失败:', error);
       alert('保存失败，请重试');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -235,6 +275,15 @@ const AdminPage = () => {
     <div className="min-h-screen bg-gray-50">
       {/* 主要内容 */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 成功消息 */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-md flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{successMessage}</span>
+          </div>
+        )}
         <div className="flex flex-col md:flex-row gap-6">
           {/* 左侧标签栏 */}
           <div className="md:w-1/4 bg-white rounded-lg shadow-sm p-4">
@@ -274,7 +323,6 @@ const AdminPage = () => {
                 data={recipes}
                 columns={recipeColumns}
                 onAdd={handleAdd}
-                onEdit={handleEdit}
                 onDelete={handleDelete}
                 searchKey="title"
                 searchPlaceholder="搜索菜谱标题..."
@@ -375,6 +423,7 @@ const AdminPage = () => {
         onClose={() => setIsModalOpen(false)}
         title={isEditing ? `编辑${activeTab === 'users' ? '用户' : activeTab === 'recipes' ? '菜谱' : '文章'}` : `添加${activeTab === 'users' ? '用户' : activeTab === 'recipes' ? '菜谱' : '文章'}`}
         onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
       >
         {activeTab === 'users' && (
           <>
@@ -417,17 +466,6 @@ const AdminPage = () => {
               ]}
               required
             />
-            <Select
-              label="状态"
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
-              options={[
-                { value: 'active', label: '活跃' },
-                { value: 'inactive', label: '禁用' }
-              ]}
-              required
-            />
           </>
         )}
 
@@ -466,30 +504,27 @@ const AdminPage = () => {
         {activeTab === 'articles' && (
           <>
             <FormField
-              label="标题"
-              name="title"
-              value={formData.title}
+              label="风格"
+              name="style"
+              value={formData.style}
               onChange={handleInputChange}
-              placeholder="请输入文章标题"
+              placeholder="请输入文章风格（如：轻松活泼、专业严谨等）"
               required
             />
             <FormField
-              label="作者"
-              name="author"
-              value={formData.author}
+              label="主题"
+              name="theme"
+              value={formData.theme}
               onChange={handleInputChange}
-              placeholder="请输入作者"
+              placeholder="请输入文章主题"
               required
             />
-            <Select
-              label="状态"
-              name="status"
-              value={formData.status}
+            <FormField
+              label="摘要"
+              name="summary"
+              value={formData.summary}
               onChange={handleInputChange}
-              options={[
-                { value: 'draft', label: '草稿' },
-                { value: 'published', label: '已发布' }
-              ]}
+              placeholder="请输入文章摘要"
               required
             />
           </>

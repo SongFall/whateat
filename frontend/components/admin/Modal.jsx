@@ -7,7 +7,8 @@ const Modal = ({
   children,
   onSubmit,
   submitText = '保存',
-  cancelText = '取消'
+  cancelText = '取消',
+  isSubmitting = false
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -71,9 +72,17 @@ const Modal = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitText}
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    生成中...
+                  </div>
+                ) : (
+                  submitText
+                )}
               </button>
             </div>
           </form>
@@ -98,7 +107,7 @@ export const FormField = ({ label, name, value, onChange, type = 'text', placeho
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
       />
     </div>
   );
@@ -119,7 +128,7 @@ export const TextArea = ({ label, name, value, onChange, placeholder, required =
         placeholder={placeholder}
         required={required}
         rows={rows}
-        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
       />
     </div>
   );
@@ -138,7 +147,7 @@ export const Select = ({ label, name, value, onChange, options, required = false
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
       >
         <option value="">请选择</option>
         {options.map((option, index) => (

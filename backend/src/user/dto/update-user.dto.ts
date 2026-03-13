@@ -33,4 +33,8 @@ export class UpdateUserDto {
 
   @IsOptional()
   preferences?: any;
+
+  @IsOptional()
+  @IsString()
+  role?: string;
 }

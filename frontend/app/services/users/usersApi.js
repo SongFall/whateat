@@ -58,6 +58,7 @@ export const register = async (userData) => {
     }
     if (response.user?.id) {
       localStorage.setItem('userId', response.user.id);
+      localStorage.setItem('userRole', response.user.role || 'user');
       localStorage.setItem('userInfo', JSON.stringify(response.user));
     }
     
@@ -165,6 +166,7 @@ export const login = async (loginData) => {
     }
     if (response.user?.id) {
       localStorage.setItem('userId', response.user.id);
+      localStorage.setItem('userRole', response.user.role || 'user');
       localStorage.setItem('userInfo', JSON.stringify(response.user));
     }
     
